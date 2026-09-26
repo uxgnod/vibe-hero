@@ -1,0 +1,336 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Backend, Data & End-to-End Types · Vibe Hero</title>
+<meta name="description" content="Three shapes of a TS backend, Hono, layering, Drizzle and database connections, validation and errors, authentication vs authorization, background jobs and end-to-end type safety.">
+<!-- seo -->
+<link rel="canonical" href="https://uxgnod.github.io/vibe-hero/en/backend.html">
+<link rel="alternate" hreflang="zh-CN" href="https://uxgnod.github.io/vibe-hero/zh/backend.html">
+<link rel="alternate" hreflang="en" href="https://uxgnod.github.io/vibe-hero/en/backend.html">
+<link rel="alternate" hreflang="x-default" href="https://uxgnod.github.io/vibe-hero/en/backend.html">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Vibe Hero">
+<meta property="og:title" content="Backend, Data &amp; End-to-End Types · Vibe Hero">
+<meta property="og:description" content="Three shapes of a TS backend, Hono, layering, Drizzle and database connections, validation and errors, authentication vs authorization, background jobs and end-to-end type safety.">
+<meta property="og:url" content="https://uxgnod.github.io/vibe-hero/en/backend.html">
+<meta property="og:image" content="https://uxgnod.github.io/vibe-hero/assets/og-image.png">
+<meta property="og:locale" content="en_US">
+<meta property="og:locale:alternate" content="zh_CN">
+<meta name="twitter:card" content="summary_large_image">
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "TechArticle", "headline": "Backend, Data & End-to-End Types", "description": "Three shapes of a TS backend, Hono, layering, Drizzle and database connections, validation and errors, authentication vs authorization, background jobs and end-to-end type safety.", "inLanguage": "en", "url": "https://uxgnod.github.io/vibe-hero/en/backend.html", "image": "https://uxgnod.github.io/vibe-hero/assets/og-image.png", "dateModified": "2026-09-26", "author": {"@type": "Person", "name": "uxgnod", "url": "https://github.com/uxgnod"}, "isPartOf": {"@type": "WebSite", "name": "Vibe Hero", "url": "https://uxgnod.github.io/vibe-hero/"}}</script>
+<link rel="icon" href="../assets/favicon.svg">
+<link rel="stylesheet" href="../assets/style.css">
+<script>try{var t=localStorage.getItem('vh-theme');if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+<script defer src="../assets/app.js"></script>
+<script defer src="../assets/widgets.js"></script>
+</head>
+<body>
+<main class="content"><article class="doc">
+
+<p class="eyebrow">CHAPTER 08 · FULL-STACK</p>
+<h1>Backend, Data & End-to-End Types</h1>
+<p class="lead">This is your home turf: HTTP APIs, databases, auth, background jobs. This chapter doesn't repeat backend basics; it explains what's <strong>different</strong> in TS full-stack: types shared between frontend and backend, database connections under serverless, and the new security model that comes with "a function is an endpoint".</p>
+<div class="meta"><span>⏱ ~60 min</span><span class="badge deep">Deep</span> (end-to-end types, connection model, authorization) <span class="badge use">Use</span> (Hono, Drizzle, Better Auth) <span class="badge aware">Aware</span> (queues & workflows)</div>
+
+<div class="goals">
+  <div class="goals-title">By the end of this chapter you should be able to:</div>
+  <ul>
+    <li>Name the three ways to organize a TS backend and pick one for a project.</li>
+    <li>Define tables with Drizzle and explain how types flow from the database all the way to a UI component.</li>
+    <li>Explain the database connection problem under serverless and the common fixes.</li>
+    <li>Separate authentication from authorization and enforce authorization in the data-access layer.</li>
+    <li>Design non-blocking handling for slow work such as AI summaries.</li>
+  </ul>
+</div>
+
+<h2 id="question">Opening: renaming one field</h2>
+
+<div class="callout question">
+  <span class="callout-title">Opening question</span>
+  <p>In a project with a Java backend and a separate frontend, the backend renames <code>summary</code> to <code>abstract</code>. The frontend isn't updated; after release the detail page shows blanks until users complain. The usual defenses are API docs, contract tests and integration testing. <strong>In a TS full-stack project, could the same change surface the moment you hit save?</strong></p>
+</div>
+
+<p><strong>Where the answer lies:</strong> yes. Because frontend and backend share one language and one repo, <strong>types can "flow" through imports from the database schema all the way to UI components</strong>: the table definition yields a row type, server function return types are inferred from queries, and the client's result types are inferred from the server functions. Change the source and every downstream use errors immediately. That's "end-to-end type safety". It doesn't replace runtime validation (Chapter 04), but it eliminates a whole class of "frontend and backend out of sync" bugs.</p>
+
+<h2 id="shapes">Three shapes of a TS backend</h2>
+
+<table>
+  <thead><tr><th>Shape</th><th>What it is</th><th>Examples</th><th>Good for</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Built into the meta-framework</strong></td><td>Backend code lives in the full-stack framework: server components, server functions, route handlers</td><td>Next.js Server Actions / Route Handlers; TanStack Start <code>createServerFn</code></td><td>Products with a single web frontend; least effort</td></tr>
+    <tr><td><strong>Standalone API service</strong></td><td>A separate HTTP service the frontend calls with fetch</td><td>Hono, Fastify, Express, NestJS</td><td>Multiple clients (web + mobile + third parties); independent scaling and deploys</td></tr>
+    <tr><td><strong>Typed RPC</strong></td><td>On top of a standalone service, clients call endpoints "like functions" and get types</td><td>tRPC, oRPC, Hono RPC client</td><td>Both sides in TS, deployed separately, types preserved</td></tr>
+  </tbody>
+</table>
+
+<p>For most personal projects and early products, <strong>start with the first</strong>. When a second client appears (a mobile app or a public API), move business logic into a standalone service. To keep that migration easy: <strong>don't write business logic in framework-specific files</strong>; write it in plain TS modules and let the framework layer merely adapt.</p>
+
+<h2 id="layers">Layering: the same as you know, only thinner</h2>
+
+<figure class="diagram">
+<div class="diagram-scroll">
+<svg viewBox="0 0 780 320" role="img" aria-label="Full-stack data flow and where types come from">
+  <defs><marker id="b1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="ar-fill"/></marker>
+  <marker id="b2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="ar-deep"/></marker></defs>
+  <g font-size="12">
+    <rect x="10" y="40" width="140" height="70" rx="10" class="box-use"/>
+    <text x="80" y="66" text-anchor="middle" font-weight="700" font-size="13">Components</text>
+    <text x="80" y="86" text-anchor="middle" class="t-soft">browser / server</text>
+    <rect x="175" y="40" width="140" height="70" rx="10" class="box-accent"/>
+    <text x="245" y="66" text-anchor="middle" font-weight="700" font-size="13">Adapter layer</text>
+    <text x="245" y="86" text-anchor="middle" class="t-soft">server fn / routes</text>
+    <rect x="340" y="40" width="140" height="70" rx="10" class="box-purple"/>
+    <text x="410" y="66" text-anchor="middle" font-weight="700" font-size="13">Service layer</text>
+    <text x="410" y="86" text-anchor="middle" class="t-soft">business rules · authz</text>
+    <rect x="505" y="40" width="140" height="70" rx="10" class="box-ok"/>
+    <text x="575" y="66" text-anchor="middle" font-weight="700" font-size="13">Data access</text>
+    <text x="575" y="86" text-anchor="middle" class="t-soft">Drizzle queries</text>
+    <rect x="670" y="40" width="100" height="70" rx="10" class="box-soft"/>
+    <text x="720" y="80" text-anchor="middle" font-weight="700" font-size="13">Database</text>
+    <line x1="150" y1="75" x2="172" y2="75" class="ln" marker-end="url(#b1)"/>
+    <line x1="315" y1="75" x2="337" y2="75" class="ln" marker-end="url(#b1)"/>
+    <line x1="480" y1="75" x2="502" y2="75" class="ln" marker-end="url(#b1)"/>
+    <line x1="645" y1="75" x2="667" y2="75" class="ln" marker-end="url(#b1)"/>
+
+    <text x="390" y="150" text-anchor="middle" font-weight="700" font-size="13" class="t-deep">Where types come from and flow (against the request direction)</text>
+    <rect x="505" y="170" width="265" height="50" rx="8" class="box-deep"/>
+    <text x="637" y="192" text-anchor="middle" font-weight="700">① schema.ts: table definition</text>
+    <text x="637" y="210" text-anchor="middle" class="t-soft t-mono" font-size="11">typeof links.$inferSelect</text>
+    <rect x="260" y="170" width="220" height="50" rx="8" class="box-deep"/>
+    <text x="370" y="192" text-anchor="middle" font-weight="700">② service return types</text>
+    <text x="370" y="210" text-anchor="middle" class="t-soft" font-size="11">inferred from query results</text>
+    <rect x="10" y="170" width="225" height="50" rx="8" class="box-deep"/>
+    <text x="122" y="192" text-anchor="middle" font-weight="700">③ data types in components</text>
+    <text x="122" y="210" text-anchor="middle" class="t-soft" font-size="11">inferred via server fn / loader</text>
+    <line x1="503" y1="195" x2="483" y2="195" class="ln-deep" marker-end="url(#b2)"/>
+    <line x1="258" y1="195" x2="238" y2="195" class="ln-deep" marker-end="url(#b2)"/>
+    <rect x="175" y="245" width="305" height="50" rx="8" class="box-use"/>
+    <text x="327" y="267" text-anchor="middle" font-weight="700">Zod input schema</text>
+    <text x="327" y="285" text-anchor="middle" class="t-soft" font-size="11">validates at runtime and yields param types</text>
+    <text x="620" y="268" text-anchor="middle" class="t-mute" font-size="11.5">Rename a field in ① →</text>
+    <text x="620" y="286" text-anchor="middle" class="t-mute" font-size="11.5">every use in ② ③ errors at once</text>
+  </g>
+</svg>
+</div>
+<figcaption>The top row is the request direction; the bottom row is the type direction. Types are defined at only two sources — the database schema and input schemas — and everything else is inferred.</figcaption>
+</figure>
+
+<p>It maps onto Spring's Controller → Service → Repository, usually thinner: no DI container (modules themselves are singletons), no DTO classes (inference plus <code>Pick</code>/<code>Omit</code> expresses which fields are exposed).</p>
+
+<h2 id="hono">Hono: an API framework that runs everywhere <span class="badge use">Use</span></h2>
+
+<p>If you need a standalone API service, <strong>Hono</strong> is the most portable choice in 2026: built on Web-standard <code>Request</code>/<code>Response</code>, the same code deploys to Cloudflare Workers, Node, Bun, Deno and Vercel; small, fast and good at inference. Stylistically it's close to Express or Go's Gin.</p>
+
+<script type="text/plain" class="code" data-lang="ts" data-title="src/api.ts">
+import { Hono } from "hono";
+import { zValidator } from "@hono/zod-validator";
+import { z } from "zod";
+import { requireUser } from "./middleware/auth";
+import * as linkService from "./services/links";
+
+const CreateLink = z.object({ url: z.url(), note: z.string().max(500).optional() });
+
+const app = new Hono()
+  .use("/links/*", requireUser)                        // middleware: 401 if not logged in
+  .get("/links", async (c) => {
+    const user = c.get("user");
+    return c.json(await linkService.list(user.id));
+  })
+  .post("/links", zValidator("json", CreateLink), async (c) => {
+    const input = c.req.valid("json");                 // type: { url: string; note?: string }
+    const link = await linkService.create(c.get("user").id, input);
+    return c.json(link, 201);
+  });
+
+export type AppType = typeof app;                      // export the route types for clients
+export default app;
+</script>
+
+<script type="text/plain" class="code" data-lang="ts" data-title="Frontend: typed client">
+import { hc } from "hono/client";
+import type { AppType } from "../server/api";          // type-only import: no server code bundled
+
+const client = hc<AppType>("/api");
+const res = await client.links.$post({ json: { url: "https://hono.dev" } });
+const link = await res.json();                          // type inferred from the server route
+</script>
+
+<h2 id="database">Databases and ORMs <span class="badge use">Use</span></h2>
+
+<h3>Choosing a database</h3>
+<ul>
+  <li><strong>Postgres</strong>: the default. Managed options include Neon and Supabase (both with free tiers); self-hosting is mature too. It can also do vector search via the pgvector extension (Chapter 11).</li>
+  <li><strong>SQLite</strong>: D1 on Cloudflare; also Turso (libSQL). Simple, cheap, a single file; good for "one database per user or tenant" architectures and small-to-medium apps.</li>
+</ul>
+
+<h3>Choosing an ORM: Drizzle or Prisma</h3>
+
+<table>
+  <thead><tr><th></th><th>Drizzle</th><th>Prisma</th></tr></thead>
+  <tbody>
+    <tr><td>Definition</td><td>Tables defined in TS code</td><td>A dedicated <code>schema.prisma</code> file that generates a client</td></tr>
+    <tr><td>Query style</td><td>SQL-like (select/where/join), plus a relational query API</td><td>Object-style API, more abstract</td></tr>
+    <tr><td>Edge / serverless</td><td>Lightweight, fits Workers and D1 naturally</td><td>Improved in recent versions; check the specific adapter</td></tr>
+    <tr><td>Pick it when</td><td>You know SQL and want transparency and lightness</td><td>Team familiarity, mature tooling (Studio, migration workflow)</td></tr>
+  </tbody>
+</table>
+
+<p>This guide uses Drizzle. As a backend developer you'll find it's essentially "typed SQL":</p>
+
+<script type="text/plain" class="code" data-lang="ts" data-title="src/db/schema.ts">
+import { pgTable, uuid, text, timestamp, jsonb, index } from "drizzle-orm/pg-core";
+
+export const links = pgTable("links", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: text("user_id").notNull(),
+  url: text("url").notNull(),
+  title: text("title"),
+  status: text("status", { enum: ["pending", "done", "failed"] }).notNull().default("pending"),
+  summary: text("summary"),
+  tags: jsonb("tags").$type<string[]>().notNull().default([]),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [index("links_user_created_idx").on(t.userId, t.createdAt)]);
+
+export type Link = typeof links.$inferSelect;      // type of a selected row
+export type NewLink = typeof links.$inferInsert;   // type for inserts (defaulted fields become optional)
+</script>
+
+<script type="text/plain" class="code" data-lang="ts" data-title="src/services/links.ts">
+import { and, desc, eq } from "drizzle-orm";
+import { db } from "../db/client";
+import { links } from "../db/schema";
+
+export async function list(userId: string) {
+  return db.select().from(links)
+    .where(eq(links.userId, userId))                 // authorization condition is part of the query
+    .orderBy(desc(links.createdAt))
+    .limit(50);                                      // return type inferred as Link[]
+}
+
+export async function remove(userId: string, id: string) {
+  const deleted = await db.delete(links)
+    .where(and(eq(links.id, id), eq(links.userId, userId)))
+    .returning({ id: links.id });
+  return deleted.length > 0;                         // false = doesn't exist or not owned by this user
+}
+</script>
+
+<p>Migrations: after editing <code>schema.ts</code>, run <code>drizzle-kit generate</code> to produce SQL migration files (review and commit them), then apply with <code>drizzle-kit migrate</code>. <strong>When an agent changes the schema, require it to show you the generated SQL</strong> — destructive changes like dropping columns or changing types need your sign-off.</p>
+
+<h3>The connection problem under serverless <span class="badge deep">Deep</span></h3>
+
+<p>A traditional service is one long-running process that opens a connection pool at startup and shares it across requests. Serverless functions may run as hundreds or thousands of instances at once, each opening its own connections — quickly exhausting Postgres's max connections (often just a few hundred). Common fixes:</p>
+<ul>
+  <li>Use the provider's <strong>pooled connection URL</strong> (e.g. PgBouncer mode).</li>
+  <li>Use an HTTP- or WebSocket-based <strong>serverless driver</strong> (e.g. Neon's), so queries don't hold a long-lived TCP connection.</li>
+  <li>On Cloudflare, use <strong>Hyperdrive</strong>: it maintains a connection pool to your database near the edge and caches queries.</li>
+  <li>In a self-hosted long-running process, do what you know: create one pool at module level.</li>
+</ul>
+
+<p>Likewise, "create a global client at module top level" is a correct singleton in a long-running process, but on some serverless platforms it may share state across requests that shouldn't be shared. That's the "shape of the runtime" topic of Chapter 09.</p>
+
+<h2 id="auth">Authentication and authorization <span class="badge deep">Deep</span></h2>
+
+<p>The two words get mixed up, but you must think about them separately:</p>
+<ul>
+  <li><strong>Authentication</strong>: who are you? — login, sessions, OAuth. <strong>Use a mature library</strong>; don't write it yourself.</li>
+  <li><strong>Authorization</strong>: may you do this? — does this bookmark belong to you? are you an admin? <strong>Only you can write this</strong>, because it is your business rules.</li>
+</ul>
+
+<table>
+  <thead><tr><th>Option</th><th>Kind</th><th>Characteristics</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Better Auth</strong></td><td>Open-source library, self-hosted</td><td>TS-native; users and sessions in your own DB; plugins for OAuth, 2FA, organizations; runs on many platforms</td></tr>
+    <tr><td><strong>Clerk</strong></td><td>Hosted service</td><td>Ready-made sign-in UI and user management; priced by users; data at a third party</td></tr>
+    <tr><td><strong>Auth.js</strong></td><td>Open-source library</td><td>Long history, deep Next.js integration</td></tr>
+    <tr><td><strong>Supabase Auth</strong></td><td>Hosted (with the database)</td><td>Combines with Supabase's row-level security (RLS)</td></tr>
+  </tbody>
+</table>
+
+<div class="callout warn">
+  <span class="callout-title">The most common authorization hole: IDOR</span>
+  <p>Insecure Direct Object Reference (IDOR): the endpoint is <code>DELETE /links/:id</code>, the code only checks "user is logged in", then deletes by id. Any logged-in user can delete anyone's bookmarks. The defense is exactly how <code>remove</code> above is written: <strong>make "belongs to the current user" part of the query condition</strong>, rather than fetching first and comparing afterwards (which is easy to forget). Every agent task that modifies data should state its authorization rule explicitly.</p>
+</div>
+
+<h2 id="errors">Validation and error handling</h2>
+
+<p>Unlike Java, the TS community has no single convention for errors. A practical approach:</p>
+<ol class="steps">
+  <li><strong>Validate at the entry</strong>: parse all external input with Zod in the adapter layer; on failure return 400/422 with per-field messages.</li>
+  <li><strong>Expected business failures are return values</strong>: e.g. a discriminated union like <code>{ ok: false, reason: "duplicate" }</code>, so the type system forces callers to handle each case.</li>
+  <li><strong>Unexpected errors are thrown</strong>; the framework's error handler logs them and returns 500 without exposing stack traces to clients.</li>
+</ol>
+
+<h2 id="jobs">Slow work: don't make users wait on the request <span class="badge aware">Aware</span></h2>
+
+<p>LinkNote's "fetch page + LLM summary" can take 10–60 seconds. Doing it synchronously in the save request means the user stares at a spinner, the serverless function may time out, and a failure halfway means starting over. The standard approach is to <strong>go asynchronous</strong>:</p>
+
+<figure class="diagram">
+<div class="diagram-scroll">
+<svg viewBox="0 0 780 200" role="img" aria-label="Async job flow">
+  <defs><marker id="b3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="ar-fill"/></marker></defs>
+  <g font-size="12">
+    <rect x="10" y="60" width="130" height="64" rx="10" class="box-use"/><text x="75" y="86" text-anchor="middle" font-weight="700">① Save request</text><text x="75" y="104" text-anchor="middle" class="t-soft" font-size="11">write status=pending</text>
+    <rect x="175" y="60" width="130" height="64" rx="10" class="box-accent"/><text x="240" y="86" text-anchor="middle" font-weight="700">② Enqueue</text><text x="240" y="104" text-anchor="middle" class="t-soft" font-size="11">return 202 at once</text>
+    <rect x="340" y="60" width="150" height="64" rx="10" class="box-purple"/><text x="415" y="86" text-anchor="middle" font-weight="700">③ Queue / workflow</text><text x="415" y="104" text-anchor="middle" class="t-soft" font-size="11">retries · steps · durable</text>
+    <rect x="525" y="60" width="130" height="64" rx="10" class="box-deep"/><text x="590" y="86" text-anchor="middle" font-weight="700">④ Execute</text><text x="590" y="104" text-anchor="middle" class="t-soft" font-size="11">fetch → LLM → write</text>
+    <rect x="690" y="60" width="80" height="64" rx="10" class="box-ok"/><text x="730" y="90" text-anchor="middle" font-weight="700">⑤ Notify</text><text x="730" y="106" text-anchor="middle" class="t-soft" font-size="10.5">SSE / polling</text>
+    <line x1="140" y1="92" x2="172" y2="92" class="ln" marker-end="url(#b3)"/>
+    <line x1="305" y1="92" x2="337" y2="92" class="ln" marker-end="url(#b3)"/>
+    <line x1="490" y1="92" x2="522" y2="92" class="ln" marker-end="url(#b3)"/>
+    <line x1="655" y1="92" x2="687" y2="92" class="ln" marker-end="url(#b3)"/>
+    <text x="390" y="160" text-anchor="middle" class="t-soft">Cloudflare: Queues / Workflows   Vercel: Queues / Workflow   Third-party: Inngest, Trigger.dev   Self-host: BullMQ + Redis</text>
+  </g>
+</svg>
+</div>
+<figcaption>The user gets a response at step ②, and the UI shows "generating"; when the result is ready, a push or poll updates it.</figcaption>
+</figure>
+
+<p>"Workflows" (durable execution) are a popular upgrade: write the job as several steps, the platform persists each step's result, a failure retries only the failed step, and you can even "wait a few hours, then continue". Especially good for AI apps (multi-step calls, human approval).</p>
+
+<p>Other common backend pieces: <strong>object storage</strong> (S3, Cloudflare R2, Vercel Blob) for files, usually with presigned URLs so browsers upload directly; <strong>key-value caches</strong> (Redis, Upstash, Cloudflare KV) for caching and rate limiting; <strong>cron jobs</strong> provided by the platform. <span class="badge aware">Aware</span></p>
+
+<div class="callout agent">
+  <span class="callout-title">Tell the agent</span>
+  <div class="compare">
+    <div class="head bad">Vague</div><div class="head good">Precise</div>
+    <div class="bad">"Write a delete-bookmark endpoint."</div>
+    <div class="good">"Add bookmark deletion: service function <code>remove(userId, id)</code> whose delete condition includes both id and userId (to prevent IDOR), returning whether a row was deleted. Adapter layer: 401 if not logged in, 400 if id isn't a UUID, 404 if nothing was deleted. Write a test for 'deleting someone else's bookmark' expecting 404."</div>
+    <div class="row-sep"></div>
+    <div class="bad">"Make summarizing a background job."</div>
+    <div class="good">"When saving a link, only write status=pending and enqueue a job; the endpoint returns 202 immediately. The consumer fetches the page (10s timeout) and calls the LLM; on success write done, on failure write failed with the reason; retry up to 3 times with exponential backoff. The job must be idempotent: re-running it for the same link id must not create duplicate data."</div>
+  </div>
+  <p>This chapter's vocabulary: end-to-end type safety, single source of truth, adapter / service layer, migration, connection pooling, authentication vs authorization, IDOR, idempotency, exponential backoff, async jobs / queues / durable workflows.</p>
+</div>
+
+<div class="callout interview">
+  <span class="callout-title">Interview corner</span>
+  <ul>
+    <li><strong>tRPC / server functions or REST?</strong> Serving only your own TS frontend, typed RPC is the most productive; for third parties or multi-language clients, REST (with OpenAPI) fits better.</li>
+    <li><strong>What's the problem connecting to a DB from serverless?</strong> Many short-lived instances exhaust connections; use a pooling proxy, an HTTP driver, or Hyperdrive.</li>
+    <li><strong>How do you make background jobs safe to retry?</strong> Make them idempotent: dedupe by business ID, check state before acting, write with upserts.</li>
+  </ul>
+</div>
+
+<h2 id="check">Self-check</h2>
+
+<details class="check">
+  <summary>1. You rename <code>links.title</code> to <code>links.headline</code> and rerun the type check. What errors? What <em>doesn't</em> error but will still break?</summary>
+  <div class="answer"><p>Errors: every service, server function and component accessing <code>.title</code> through inferred types. No errors: the database itself (it needs a migration to rename the column); places that bypass types with <code>as</code> or <code>any</code>; hand-written SQL strings; external systems (stale data in caches, third-party clients of your API). End-to-end types only cover code within the same compilation.</p></div>
+</details>
+
+<details class="check">
+  <summary>2. The agent's service layer does <code>findById(id)</code>, then <code>if (link.userId !== user.id) throw Forbidden</code>, then deletes. Is that safe? How does it compare to putting the condition in the where clause?</summary>
+  <div class="answer"><p>Logically safe, with two weaknesses: it relies on every developer (and agent) remembering that if in every new endpoint; and "check" and "delete" are two operations with a time window between them (minor for deletes, a possible race for updates). Putting it in the where clause makes authorization part of the query itself, far harder to forget. Returning 404 instead of 403 also avoids leaking "this id exists".</p></div>
+</details>
+
+<details class="check">
+  <summary>3. A serverless app reports "too many connections" at peak traffic and is fine off-peak. Most likely cause?</summary>
+  <div class="answer"><p>At peak the platform spins up many function instances, each opening its own DB connection (or pool), exceeding the database's limit. Fix: switch to a pooled URL / serverless driver / Hyperdrive, and make sure each instance's pool size is tiny (e.g. 1).</p></div>
+</details>
+
+</article></main>
+</body>
+</html>

@@ -1,0 +1,324 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>驾驭 Coding Agent · Vibe Hero</title>
+<meta name="description" content="探索、规格、计划、实现、验证、审查：用精确的词汇描述需求，掌控节奏，审查 Agent 的设计与代码。">
+<!-- seo -->
+<link rel="canonical" href="https://uxgnod.github.io/vibe-hero/zh/workflow.html">
+<link rel="alternate" hreflang="zh-CN" href="https://uxgnod.github.io/vibe-hero/zh/workflow.html">
+<link rel="alternate" hreflang="en" href="https://uxgnod.github.io/vibe-hero/en/workflow.html">
+<link rel="alternate" hreflang="x-default" href="https://uxgnod.github.io/vibe-hero/en/workflow.html">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Vibe Hero">
+<meta property="og:title" content="驾驭 Coding Agent · Vibe Hero">
+<meta property="og:description" content="探索、规格、计划、实现、验证、审查：用精确的词汇描述需求，掌控节奏，审查 Agent 的设计与代码。">
+<meta property="og:url" content="https://uxgnod.github.io/vibe-hero/zh/workflow.html">
+<meta property="og:image" content="https://uxgnod.github.io/vibe-hero/assets/og-image.png">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:locale:alternate" content="en_US">
+<meta name="twitter:card" content="summary_large_image">
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "TechArticle", "headline": "驾驭 Coding Agent", "description": "探索、规格、计划、实现、验证、审查：用精确的词汇描述需求，掌控节奏，审查 Agent 的设计与代码。", "inLanguage": "zh-CN", "url": "https://uxgnod.github.io/vibe-hero/zh/workflow.html", "image": "https://uxgnod.github.io/vibe-hero/assets/og-image.png", "dateModified": "2026-09-26", "author": {"@type": "Person", "name": "uxgnod", "url": "https://github.com/uxgnod"}, "isPartOf": {"@type": "WebSite", "name": "Vibe Hero", "url": "https://uxgnod.github.io/vibe-hero/"}}</script>
+<link rel="icon" href="../assets/favicon.svg">
+<link rel="stylesheet" href="../assets/style.css">
+<script>try{var t=localStorage.getItem('vh-theme');if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+<script defer src="../assets/app.js"></script>
+<script defer src="../assets/widgets.js"></script>
+</head>
+<body>
+<main class="content"><article class="doc">
+
+<p class="eyebrow">CHAPTER 13 · 驾驭</p>
+<h1>驾驭 Coding Agent</h1>
+<p class="lead">前面十二章给了你心智模型和词汇。本章把它们组装成一套可重复的工作流：怎样把模糊的意图变成 Agent 能准确执行的规格，怎样在关键节点介入，怎样高效地审查产出。目标是让你<strong>始终掌握方向和节奏</strong>，而不是被 Agent 的输出推着走。</p>
+<div class="meta"><span>⏱ 约 60 分钟</span><span class="badge deep">原理</span>（为什么这样做）<span class="badge use">会用</span>（模板与清单，直接拿去用）</div>
+
+<div class="goals">
+  <div class="goals-title">读完本章，你应该能够：</div>
+  <ul>
+    <li>按“探索 → 规格 → 计划 → 实现 → 验证 → 审查”的流程推进一个功能，并知道在哪几个节点必须由你决定。</li>
+    <li>用六要素模板写出一份任务说明。</li>
+    <li>把一个模糊的现象描述（“页面卡”“数据不对”）翻译成准确的技术表达。</li>
+    <li>用一份清单在 10 分钟内审查一个 Agent 生成的 PR。</li>
+    <li>识别“Agent 在绕圈子”的信号，并知道此时该怎么做。</li>
+  </ul>
+</div>
+
+<h2 id="question">开场：两个开发者，同一个功能</h2>
+
+<div class="callout question">
+  <span class="callout-title">开场问题</span>
+  <p>A 和 B 用同一个 Agent 给 LinkNote 加“按标签筛选”。A 输入“加个标签筛选功能”，然后花了两个小时来回修改：Agent 先用 useState 实现，A 说刷新后筛选丢了；Agent 改用 localStorage，A 说分享链接时别人看不到筛选；Agent 改成 URL 参数，但顺手重构了列表组件，把分页弄坏了……B 先花 15 分钟写了一份说明，Agent 一次完成，测试全部通过。<strong>B 做对了什么？</strong></p>
+</div>
+
+<p><strong>答案方向：</strong>A 在用“试错”的方式让 Agent 猜自己的需求，每轮只暴露一条隐含的要求；B 在动手之前，把隐含的要求都说了出来：筛选状态放 URL（可分享、可刷新）、不要改动分页、完成标准是什么。Agent 执行能力很强，但它<strong>无法读出你没说出来的要求</strong>。B 那 15 分钟不是“写文档”，而是<strong>设计</strong>——这正是你在 Agent 时代的核心工作。</p>
+
+<h2 id="loop">工作流全景</h2>
+
+<figure class="diagram">
+<div class="diagram-scroll">
+<svg viewBox="0 0 780 330" role="img" aria-label="Agent 辅助开发工作流">
+  <defs><marker id="wf1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="ar-accent"/></marker>
+  <marker id="wf2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="ar-deep"/></marker></defs>
+  <g font-size="12.5">
+    <rect x="20" y="40" width="120" height="70" rx="12" class="box-soft"/><text x="80" y="68" text-anchor="middle" font-weight="700">① 探索</text><text x="80" y="88" text-anchor="middle" font-size="11" class="t-soft">Agent 调查现状</text>
+    <rect x="170" y="40" width="120" height="70" rx="12" class="box-deep"/><text x="230" y="68" text-anchor="middle" font-weight="700">② 规格</text><text x="230" y="88" text-anchor="middle" font-size="11" class="t-soft">你定义要什么</text>
+    <rect x="320" y="40" width="120" height="70" rx="12" class="box-deep"/><text x="380" y="68" text-anchor="middle" font-weight="700">③ 计划</text><text x="380" y="88" text-anchor="middle" font-size="11" class="t-soft">Agent 提方案，你批准</text>
+    <rect x="470" y="40" width="120" height="70" rx="12" class="box-accent"/><text x="530" y="68" text-anchor="middle" font-weight="700">④ 实现</text><text x="530" y="88" text-anchor="middle" font-size="11" class="t-soft">Agent 小步推进</text>
+    <rect x="620" y="40" width="140" height="70" rx="12" class="box-ok"/><text x="690" y="68" text-anchor="middle" font-weight="700">⑤ 验证</text><text x="690" y="88" text-anchor="middle" font-size="11" class="t-soft">类型 · 测试 · 预览</text>
+    <rect x="470" y="200" width="140" height="70" rx="12" class="box-deep"/><text x="540" y="228" text-anchor="middle" font-weight="700">⑥ 审查</text><text x="540" y="248" text-anchor="middle" font-size="11" class="t-soft">你读关键 diff</text>
+    <rect x="250" y="200" width="140" height="70" rx="12" class="box-soft"/><text x="320" y="228" text-anchor="middle" font-weight="700">⑦ 提交 / 合并</text><text x="320" y="248" text-anchor="middle" font-size="11" class="t-soft">小 PR · CI 门禁</text>
+    <rect x="20" y="200" width="160" height="70" rx="12" class="box-use"/><text x="100" y="228" text-anchor="middle" font-weight="700">⑧ 沉淀</text><text x="100" y="248" text-anchor="middle" font-size="11" class="t-soft">更新 AGENTS.md / 测试</text>
+  </g>
+  <line x1="140" y1="75" x2="167" y2="75" class="ln-accent" marker-end="url(#wf1)"/>
+  <line x1="290" y1="75" x2="317" y2="75" class="ln-accent" marker-end="url(#wf1)"/>
+  <line x1="440" y1="75" x2="467" y2="75" class="ln-accent" marker-end="url(#wf1)"/>
+  <line x1="590" y1="75" x2="617" y2="75" class="ln-accent" marker-end="url(#wf1)"/>
+  <path d="M690 112 L690 150 L560 150 L560 197" class="ln-accent" marker-end="url(#wf1)"/>
+  <line x1="468" y1="235" x2="393" y2="235" class="ln-accent" marker-end="url(#wf1)"/>
+  <line x1="248" y1="235" x2="183" y2="235" class="ln-accent" marker-end="url(#wf1)"/>
+  <path d="M640 40 C 640 10, 540 10, 540 36" class="ln-deep ln-dash" marker-end="url(#wf2)"/>
+  <text x="590" y="16" text-anchor="middle" font-size="11" class="t-deep">失败 → 回到实现（Agent 自己循环）</text>
+  <path d="M100 198 C 100 150, 60 140, 70 114" class="ln ln-dash"/>
+  <text x="390" y="310" text-anchor="middle" font-size="12" class="t-soft">红色节点是你必须亲自决策的地方；蓝绿节点可以大量交给 Agent 和自动化检查。</text>
+</svg>
+</div>
+<figcaption>一个功能的完整循环。小功能可以合并步骤（例如探索与计划一起），但“规格”和“审查”这两个节点不能省。</figcaption>
+</figure>
+
+<h3>① 探索：先让 Agent 调查，别急着动手</h3>
+<p>对于不熟悉的代码或复杂的改动，第一条指令应该是“调查并报告”，而不是“实现”。例如：“列表页的数据是怎么加载的？筛选和分页的状态分别存在哪里？只读代码，不要修改，给我一份简短的报告。”这一步便宜，而且能暴露你自己的错误假设。</p>
+
+<h3>② 规格：你的核心产出</h3>
+<p>见下一节的六要素模板。</p>
+
+<h3>③ 计划：在最便宜的时候否决错误方向</h3>
+<p>让 Agent 在写代码前给出计划（很多工具有专门的“计划模式”）。审查计划比审查代码便宜十倍。看计划时问：</p>
+<ul>
+  <li>它打算修改的文件，和我预期的一致吗？有没有超出范围的改动？</li>
+  <li>有没有数据模型变化、新依赖、数据库迁移？这些需要我特别确认。</li>
+  <li>安全相关的部分（鉴权、校验）有没有考虑？</li>
+  <li>测试计划是什么？怎么证明它做完了？</li>
+</ul>
+
+<h3>④ 实现：小步、可验证、可提交</h3>
+<p>把工作切成<strong>纵向的薄片</strong>：每一片都是端到端可运行的最小功能（例如“先让 URL 参数能过滤列表，暂不做界面”），而不是“先写完所有数据库代码，再写所有接口，再写所有界面”。每一片完成后运行检查并提交。出问题时只需要回退一小步。</p>
+
+<h3>⑤ 验证：让机器先把关</h3>
+<p>第 10 章的完成定义在这里发挥作用：类型检查、Lint、测试全部通过，Agent 才能说“完成”。涉及界面时，打开预览链接亲手点一遍——这是任何自动化都替代不了的。</p>
+
+<h3>⑥ 审查 → ⑦ 合并 → ⑧ 沉淀</h3>
+<p>审查方法见后文。合并后，花一分钟问自己：这次有什么是我不得不反复告诉 Agent 的？把它写进 AGENTS.md 或变成测试 / Lint 规则。<strong>每一次纠正都应该只发生一次。</strong></p>
+
+<h2 id="spec">任务说明的六要素</h2>
+
+<table>
+  <thead><tr><th>要素</th><th>回答的问题</th><th>缺失时的典型后果</th></tr></thead>
+  <tbody>
+    <tr><td><strong>1. 目标与背景</strong></td><td>为什么做？给谁用？</td><td>技术上正确但解决的不是真正的问题</td></tr>
+    <tr><td><strong>2. 范围</strong></td><td>做什么，<em>明确不做什么</em></td><td>Agent 顺手“优化”了无关代码</td></tr>
+    <tr><td><strong>3. 约束</strong></td><td>必须用 / 不许用的技术、模式、依赖</td><td>引入新库、换了状态管理方式、关掉了严格检查</td></tr>
+    <tr><td><strong>4. 接口与数据</strong></td><td>数据长什么样、存在哪、接口签名</td><td>数据模型每次都不一样，前后端对不上</td></tr>
+    <tr><td><strong>5. 验收标准</strong></td><td>怎样算完成？（可执行、可观察）</td><td>“看起来能用”，边界情况全漏</td></tr>
+    <tr><td><strong>6. 交付物</strong></td><td>要交回什么：代码、测试、说明、截图</td><td>不知道改了什么、怎么验证</td></tr>
+  </tbody>
+</table>
+
+<script type="text/plain" class="code" data-lang="md" data-title="示例：LinkNote 标签筛选任务说明">
+## 目标
+用户收藏多了之后需要按标签快速缩小范围。筛选结果要能通过链接分享给自己的其他设备。
+
+## 范围
+- 做：列表页顶部的标签选择器；按单个标签筛选；清除筛选
+- 不做：多标签组合筛选、标签管理、分页逻辑的任何修改
+
+## 约束
+- 筛选状态放在 URL 查询参数 `tag`（用路由的 validateSearch + Zod 校验）
+- 过滤在服务器查询中完成（where 条件），不要取全部数据再在前端过滤
+- 标签比较忽略大小写
+- 不新增依赖；不修改 src/components/Pagination.tsx
+
+## 接口与数据
+- links.tags 是 jsonb 字符串数组（见 src/db/schema.ts）
+- 服务层新增参数：list(userId, { tag?: string })
+- 标签选项来自新函数 listTags(userId)：返回该用户所有去重后的标签
+
+## 验收标准
+- 访问 /links?tag=React 与 /links?tag=react 结果相同
+- 刷新页面、复制链接到新窗口，筛选保持
+- 无匹配结果时显示空状态和“清除筛选”按钮
+- 单元测试：大小写、无标签的收藏、不存在的标签
+- E2E：选择标签 → URL 变化 → 列表更新 → 清除 → 恢复全部
+- typecheck、lint、test 全部通过
+
+## 交付
+- 先给计划，等我确认后再实现
+- 完成后列出修改的文件、每个文件改了什么，以及我该如何手动验证
+</script>
+
+<p>写这样一份说明需要 10～15 分钟。它迫使<strong>你自己</strong>先想清楚：状态放哪里、在哪一层过滤、边界情况有哪些。这些决策如果留给 Agent 隐式地做，就会出现开场问题中 A 的两小时。</p>
+
+<div class="callout tip">
+  <span class="callout-title">说明写不出来怎么办</span>
+  <p>写不出验收标准，往往说明你自己还没想清楚要什么。这时可以反过来让 Agent 帮你：“我想做标签筛选。请向我提问，帮我澄清需求，每次只问一个问题，最后整理成任务说明。”这是用 Agent 做需求分析，而不是直接让它猜。</p>
+</div>
+
+<h2 id="vocabulary">精确表达：从现象到术语</h2>
+
+<p>你观察到的往往是“现象”，而 Agent 需要的是“诊断方向”。下表把常见的模糊描述映射到前面章节中的精确表达。熟练使用这些词，是驾驭 Agent 最直接的杠杆：</p>
+
+<table>
+  <thead><tr><th>你看到的现象</th><th>可能的精确表达</th><th>章节</th></tr></thead>
+  <tbody>
+    <tr><td>页面一直在重复请求接口</td><td>useEffect 依赖了不稳定的引用，形成“渲染 → Effect → setState”循环</td><td>06</td></tr>
+    <tr><td>改了数据，界面没变</td><td>直接修改了 state 对象（mutation），引用未变；应使用不可变更新</td><td>03 / 06</td></tr>
+    <tr><td>刷新后筛选 / 分页丢了</td><td>该状态应该放在 URL 查询参数中，而不是组件局部状态</td><td>06</td></tr>
+    <tr><td>搜索结果和输入框对不上</td><td>请求竞态：旧请求晚于新请求返回；需要取消或按 key 丢弃过期结果</td><td>06</td></tr>
+    <tr><td>同一个数据在两个地方显示不一致</td><td>存了派生状态 / 缺少单一事实来源；或者缓存没有失效（invalidate）</td><td>06 / 08</td></tr>
+    <tr><td>页面第一次打开很慢</td><td>首屏 JS 体积过大 / 请求瀑布 / 应改为服务端渲染或流式渲染</td><td>07</td></tr>
+    <tr><td>页面先显示一种内容，又闪成另一种</td><td>水合不匹配 / 客户端二次获取数据</td><td>07</td></tr>
+    <tr><td>别人能看到或删除我的数据</td><td>缺少授权检查（IDOR）；授权条件应写入查询</td><td>08</td></tr>
+    <tr><td>接口在浏览器报错，curl 正常</td><td>CORS：需声明允许的来源和 credentials，或改为同源</td><td>05</td></tr>
+    <tr><td>部署后偶尔丢数据或计数不准</td><td>在 serverless 实例内存中保存了共享状态</td><td>09</td></tr>
+    <tr><td>高峰期数据库报连接过多</td><td>serverless 下连接数爆炸；需要连接池代理或 HTTP 驱动</td><td>08</td></tr>
+    <tr><td>批量处理“提前结束”</td><td>forEach(async) 未等待；或漂浮的 Promise</td><td>03</td></tr>
+    <tr><td>AI 回答要等很久才出来</td><td>未使用流式输出；首 token 时间（TTFT）过长</td><td>11</td></tr>
+    <tr><td>AI 返回的数据格式时对时错</td><td>缺少结构化输出与 schema 校验</td><td>11</td></tr>
+    <tr><td>Agent 越改越乱、反复犯错</td><td>上下文过长或被污染；应写入进度文件后开新会话</td><td>12</td></tr>
+  </tbody>
+</table>
+
+<p>注意“可能的”三个字。这些表达是<strong>假设</strong>，不是结论。好的做法是把现象和你的假设一起告诉 Agent，并要求它先验证：“我怀疑是请求竞态，请先加日志确认请求的发出和返回顺序，再修复。”</p>
+
+<h2 id="review">审查 Agent 的产出</h2>
+
+<h3>审查设计方案</h3>
+<p>当 Agent 给出设计文档或技术方案时，重点不是文字是否漂亮，而是：</p>
+<ul>
+  <li><strong>需求覆盖</strong>：每条验收标准都有对应的实现方式吗？</li>
+  <li><strong>数据模型</strong>：新增的表 / 字段是否合理？将来要改是否很痛苦？</li>
+  <li><strong>失败模式</strong>：网络失败、LLM 超时、重复提交、并发修改时会怎样？</li>
+  <li><strong>备选方案</strong>：它考虑过哪些其他做法？为什么不选？——如果没有，就追问：“给我两个备选方案和取舍。”</li>
+  <li><strong>过度设计</strong>：是否为假想的未来需求引入了抽象层、插件系统、通用框架？</li>
+</ul>
+
+<h3>审查代码：10 分钟清单</h3>
+
+<p>不要从第一个文件开始逐行读。按信息密度从高到低的顺序：</p>
+<ol class="steps">
+  <li><strong>看改动范围</strong>：修改的文件列表是否符合预期？有没有碰了说明里“不做”的部分？</li>
+  <li><strong>看数据结构</strong>：schema、类型定义、Zod schema、数据库迁移。这些决定了其余代码的形状。</li>
+  <li><strong>看测试</strong>：测试是否覆盖了验收标准？<strong>已有测试有没有被修改</strong>（第 10 章）？</li>
+  <li><strong>看边界</strong>：外部输入有没有校验？授权条件在不在？密钥有没有进入客户端代码？</li>
+  <li><strong>搜危险信号</strong>：<code>any</code>、<code>as</code>、<code>!</code>、<code>@ts-ignore</code>、<code>eslint-disable</code>、空的 <code>catch</code>、新增的依赖、<code>useEffect</code>。</li>
+  <li><strong>最后看核心逻辑</strong>：此时你已经知道它应该长什么样，读起来会快得多。</li>
+</ol>
+
+<div class="callout tip">
+  <span class="callout-title">让另一个 Agent 帮你审查</span>
+  <p>可以开一个新的会话（或子 Agent），只给它任务说明和 diff，让它按上面的清单找问题。它没有被实现过程的上下文“说服”，常常能发现写代码的那个会话看不到的问题。但最终判断仍由你做。</p>
+</div>
+
+<h2 id="rhythm">掌控节奏</h2>
+
+<h3>什么时候介入</h3>
+<ul>
+  <li><strong>同一个问题尝试了 3 次仍未解决</strong>：停下来。不要说“再试一次”。要求 Agent 列出假设和证据，或者你亲自看一眼报错。继续让它猜，只会让上下文越来越乱。</li>
+  <li><strong>它开始修改说明范围之外的东西</strong>：立即指出，并要求回退。</li>
+  <li><strong>它提出要关闭检查、跳过测试、加依赖</strong>：这些都需要你的明确批准。</li>
+  <li><strong>diff 大到你不想读</strong>：说明任务切得太大了。回退，切小再来。</li>
+</ul>
+
+<h3>调试时的协作方式</h3>
+<script type="text/plain" class="code" data-lang="md" data-title="bug 报告模板">
+## 现象
+在 /links?tag=react 页面点击“清除筛选”后，列表仍然只显示 react 标签的收藏，刷新后才正常。
+
+## 复现步骤
+1. 打开 /links?tag=react
+2. 点击“清除筛选”
+
+## 期望 / 实际
+期望：URL 变为 /links，列表显示全部
+实际：URL 已变为 /links，但列表未更新
+
+## 已知信息
+- 控制台无报错；网络面板显示没有发出新的请求
+- 我怀疑 loader 的缓存 key 没有包含 tag
+
+## 要求
+先提出 2～3 个可能原因并按可能性排序，说明如何验证每一个；验证后再修复，并补一个能复现该问题的测试。
+</script>
+
+<p>关键点：<strong>给证据，要假设，先验证后修改</strong>。这把 Agent 从“猜一个修复方案”转变为“做一次小型的科学实验”。</p>
+
+<h3>什么时候自己动手</h3>
+<p>一行就能改好的配置、你已经清楚知道怎么修的小 bug、需要审美判断的界面微调——自己改往往比描述给 Agent 更快。Agent 不是必须用于每一件事。</p>
+
+<h3>并行</h3>
+<p>熟练之后，可以同时运行多个 Agent 处理相互独立的任务（例如一个写功能、一个补测试、一个调查性能问题），每个任务使用独立的 git worktree 或分支。前提是任务之间真的独立，并且你有精力审查所有产出——并行的瓶颈永远是你的审查能力。</p>
+
+<h2 id="agents-md">AGENTS.md 的进阶写法</h2>
+
+<ul>
+  <li><strong>短而具体</strong>：它在每次会话中都会占用上下文。写“用 pnpm”，而不是一段关于包管理器的论述。</li>
+  <li><strong>写 Agent 猜不到的东西</strong>：项目特有的约定、踩过的坑、禁止事项。框架的通用知识不需要写。</li>
+  <li><strong>指向而非复制</strong>：“数据库约定见 docs/db.md”，让 Agent 需要时再读。</li>
+  <li><strong>分层</strong>：根目录放全局约定；子目录（如 <code>apps/api/AGENTS.md</code>）放局部约定。</li>
+  <li><strong>持续维护</strong>：它是一份活文档。每次发现自己重复纠正，就更新它；发现某条过时了，就删掉。</li>
+</ul>
+
+<h2 id="tools">工具之间的差异 <span class="badge aware">知道</span></h2>
+
+<p>Claude Code、Codex CLI、pi、Cursor、各类 IDE Agent 的底层原理相同（第 12 章），本章的方法对它们都适用。差异主要在 Harness 的设计取向：有的提供丰富的内置能力（计划模式、子 Agent、Hooks、插件市场、云端运行），有的刻意极简、让你用扩展自行组装。选择时关注：它是否支持你的模型、项目说明文件的约定、权限控制粒度、能否无人值守地运行（用于 CI 或批量任务）、以及你是否喜欢它的交互方式。不必追逐每一个新工具——工作流和表达能力才是可迁移的资产。</p>
+
+<h2 id="antipatterns">反模式</h2>
+
+<table>
+  <thead><tr><th>反模式</th><th>为什么有害</th><th>替代做法</th></tr></thead>
+  <tbody>
+    <tr><td>不读代码，只看效果</td><td>安全漏洞、数据模型问题在界面上看不出来</td><td>至少按清单审查数据结构、测试和边界</td></tr>
+    <tr><td>“修复所有报错”</td><td>Agent 会用最快的方式让报错消失（any、as、ignore）</td><td>加约束：不许用哪些逃生舱；先解释再修</td></tr>
+    <tr><td>一个会话做一整天</td><td>上下文腐化，后期质量下降</td><td>一个任务一个会话，进度写入文件</td></tr>
+    <tr><td>一次性给出巨大需求</td><td>计划模糊，diff 巨大，无法审查</td><td>纵向切片，每片可验证</td></tr>
+    <tr><td>让 Agent 默默做架构决策</td><td>状态放哪、在哪层过滤、用什么库——这些决定会长期影响项目</td><td>在规格里写明，或在计划阶段审批</td></tr>
+    <tr><td>先搭完美的工具链再开始做产品</td><td>把时间花在准备上而不是交付上</td><td>先做出最小可用版本并上线，遇到真实问题再补工具</td></tr>
+  </tbody>
+</table>
+
+<div class="callout interview">
+  <span class="callout-title">面试角：“你怎么使用 AI 编程工具？”</span>
+  <p>这个问题在 2026 年的面试中非常常见。好的回答不是“我用 X 工具，效率提高了多少”，而是展示你的<strong>工作方法和判断力</strong>：</p>
+  <ul>
+    <li>先写规格和验收标准，再让 Agent 实现；复杂任务先审查计划。</li>
+    <li>用类型检查、测试和 CI 作为自动验证网，而不是逐行阅读。</li>
+    <li>审查的重点：数据模型、授权与校验、测试是否被修改、新增依赖。</li>
+    <li>举一个你发现 Agent 犯了隐蔽错误的例子（例如 IDOR 或 Effect 循环），说明你是怎么发现的。</li>
+    <li>说明你把重复出现的纠正沉淀为项目说明、Hook 或 Lint 规则。</li>
+  </ul>
+</div>
+
+<h2 id="check">自检</h2>
+
+<details class="check">
+  <summary>1. 把下面这句需求改写成符合六要素的任务说明（可以简写）：“给 LinkNote 加个导出功能。”</summary>
+  <div class="answer">
+    <p>参考要点：目标（用户想备份或迁移收藏）；范围（导出当前用户全部收藏为 JSON 和 Markdown；不做导入、不做定时导出）；约束（服务器端生成，流式下载避免大数据量内存问题；不新增依赖）；数据（包含 url、title、summary、tags、createdAt，不包含内部 id 和 userId）；验收（1000 条收藏导出不超时；只能导出自己的数据；文件名包含日期；有测试）；交付（先给计划）。</p>
+    <p>重点不在于答案完全一致，而在于你是否主动想到了“不做什么”、授权、数据量和验证方式。</p>
+  </div>
+</details>
+
+<details class="check">
+  <summary>2. Agent 已经三次尝试修复一个“列表偶尔显示旧数据”的 bug，每次都说“已修复”，但问题仍会出现。你下一条消息应该怎么写？</summary>
+  <div class="answer"><p>停止让它继续尝试修复。可以这样写：“先不要修改代码。请列出至少三个可能导致列表显示旧数据的原因（例如缓存未失效、请求竞态、服务器缓存），说明每个原因如何用日志或测试验证。然后添加日志，给我复现步骤，我们根据证据确定原因后再修。”如果会话已经很长，先让它把目前的发现写入文件，再开新会话。</p></div>
+</details>
+
+<details class="check">
+  <summary>3. Agent 提交的 PR 修改了 23 个文件，其中 15 个是“顺便做的代码风格统一”。你怎么处理？</summary>
+  <div class="answer"><p>要求拆分：把风格调整移出这个 PR（或直接撤销），只保留与功能相关的修改。混在一起的 diff 会掩盖真正的逻辑改动，让审查变得困难，也会增加冲突和回滚的成本。然后在 AGENTS.md 里加一条：“不要修改任务范围以外的文件；格式化交给格式化工具。”</p></div>
+</details>
+
+</article></main>
+</body>
+</html>

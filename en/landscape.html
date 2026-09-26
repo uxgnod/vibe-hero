@@ -1,0 +1,351 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Ecosystem Map · Vibe Hero</title>
+<meta name="description" content="A layered map of the TypeScript ecosystem: language, type checking, transpiling, bundling, runtimes, package managers, frameworks, platforms — and the three mainstream stacks of 2026.">
+<!-- seo -->
+<link rel="canonical" href="https://uxgnod.github.io/vibe-hero/en/landscape.html">
+<link rel="alternate" hreflang="zh-CN" href="https://uxgnod.github.io/vibe-hero/zh/landscape.html">
+<link rel="alternate" hreflang="en" href="https://uxgnod.github.io/vibe-hero/en/landscape.html">
+<link rel="alternate" hreflang="x-default" href="https://uxgnod.github.io/vibe-hero/en/landscape.html">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Vibe Hero">
+<meta property="og:title" content="The Ecosystem Map · Vibe Hero">
+<meta property="og:description" content="A layered map of the TypeScript ecosystem: language, type checking, transpiling, bundling, runtimes, package managers, frameworks, platforms — and the three mainstream stacks of 2026.">
+<meta property="og:url" content="https://uxgnod.github.io/vibe-hero/en/landscape.html">
+<meta property="og:image" content="https://uxgnod.github.io/vibe-hero/assets/og-image.png">
+<meta property="og:locale" content="en_US">
+<meta property="og:locale:alternate" content="zh_CN">
+<meta name="twitter:card" content="summary_large_image">
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "TechArticle", "headline": "The Ecosystem Map", "description": "A layered map of the TypeScript ecosystem: language, type checking, transpiling, bundling, runtimes, package managers, frameworks, platforms — and the three mainstream stacks of 2026.", "inLanguage": "en", "url": "https://uxgnod.github.io/vibe-hero/en/landscape.html", "image": "https://uxgnod.github.io/vibe-hero/assets/og-image.png", "dateModified": "2026-09-26", "author": {"@type": "Person", "name": "uxgnod", "url": "https://github.com/uxgnod"}, "isPartOf": {"@type": "WebSite", "name": "Vibe Hero", "url": "https://uxgnod.github.io/vibe-hero/"}}</script>
+<link rel="icon" href="../assets/favicon.svg">
+<link rel="stylesheet" href="../assets/style.css">
+<script>try{var t=localStorage.getItem('vh-theme');if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+<script defer src="../assets/app.js"></script>
+<script defer src="../assets/widgets.js"></script>
+</head>
+<body>
+<main class="content"><article class="doc">
+
+<p class="eyebrow">CHAPTER 01 · START</p>
+<h1>The Ecosystem Map</h1>
+<p class="lead">The TS ecosystem looks bewildering because what one JDK does in Java is split here into five or six interchangeable tools. Look at each layer separately and every one of them has a counterpart in the world you already know.</p>
+<div class="meta"><span>⏱ ~30 min</span><span class="badge use">Use</span><span class="badge aware">Aware</span><span>"type checking ≠ transpiling" is <span class="badge deep">Deep</span></span></div>
+
+<div class="goals">
+  <div class="goals-title">By the end of this chapter you should be able to:</div>
+  <ul>
+    <li>Place commands like <code>node</code>, <code>pnpm</code>, <code>tsc</code>, <code>vite</code>, <code>next</code> and <code>wrangler</code> on the right layer.</li>
+    <li>Explain why "the code runs" does not mean "the types are correct".</li>
+    <li>Describe the three mainstream stacks of 2026 (Vercel / Cloudflare / self-hosted) and what they have in common.</li>
+  </ul>
+</div>
+
+<h2 id="question">Opening: one project, eight commands</h2>
+
+<div class="callout question">
+  <span class="callout-title">Opening question</span>
+  <p>You asked an agent to scaffold a project. The scripts in <code>package.json</code> read: <code>"dev": "vite dev"</code>, <code>"build": "vite build"</code>, <code>"typecheck": "tsc --noEmit"</code>, <code>"deploy": "wrangler deploy"</code>. You install dependencies with <code>pnpm</code> and run scripts with <code>node</code>. <strong>Why so many tools? Can't you just write TypeScript and "compile and run" it?</strong></p>
+</div>
+
+<p><strong>Where the answer lies:</strong> turning TS source into "an app people can use" goes through a pipeline: <em>manage dependencies → check types → strip types → bundle and optimize → execute on some runtime → publish to some platform</em>. In Java, the JDK plus Maven fold most of that together; in TS, every step has its own independent, replaceable tool. Each command above is one station on the line.</p>
+
+<h2 id="mapping">Start by mapping to what you know</h2>
+
+<p>This table maps each layer of the TS ecosystem to Java / Go / Python. It's the anchor for the whole chapter; each section below expands one row.</p>
+
+<table>
+  <thead><tr><th>Layer</th><th>Java / Go / Python</th><th>TypeScript ecosystem</th><th>Depth</th></tr></thead>
+  <tbody>
+    <tr><td>Language</td><td>Java / Go / Python</td><td>TypeScript (= JavaScript + type annotations)</td><td><span class="badge deep">Deep</span></td></tr>
+    <tr><td>Type checking</td><td>javac / go build (check + compile in one)</td><td><code>tsc</code> (checks only, usually emits nothing)</td><td><span class="badge deep">Deep</span></td></tr>
+    <tr><td>Transpile (strip types)</td><td>— (the compiler does it)</td><td>esbuild, SWC, Oxc, Node's built-in type stripping</td><td><span class="badge aware">Aware</span></td></tr>
+    <tr><td>Runtime</td><td>JVM / Go runtime / CPython</td><td>Node.js, Bun, Deno, browsers, Cloudflare workerd</td><td><span class="badge use">Use</span></td></tr>
+    <tr><td>Package manager</td><td>Maven / go mod / pip, uv</td><td>pnpm, npm, bun (registry: npm)</td><td><span class="badge use">Use</span></td></tr>
+    <tr><td>Bundling</td><td>building a jar / static binary</td><td>Vite (Rolldown inside), Turbopack (Next.js)</td><td><span class="badge aware">Aware</span></td></tr>
+    <tr><td>Web backend framework</td><td>Spring / Gin / FastAPI</td><td>Hono, Express, Fastify, NestJS</td><td><span class="badge use">Use</span></td></tr>
+    <tr><td>Full-stack framework</td><td>Rails / Django (with templates)</td><td>Next.js, TanStack Start, React Router</td><td><span class="badge use">Use</span></td></tr>
+    <tr><td>UI library</td><td>template engines / none</td><td>React (also Vue, Svelte, Solid)</td><td><span class="badge deep">Deep</span></td></tr>
+    <tr><td>ORM</td><td>Hibernate / GORM / SQLAlchemy</td><td>Drizzle, Prisma</td><td><span class="badge use">Use</span></td></tr>
+    <tr><td>Testing</td><td>JUnit / go test / pytest</td><td>Vitest (unit), Playwright (end-to-end)</td><td><span class="badge use">Use</span></td></tr>
+    <tr><td>Format / lint</td><td>gofmt / black / ruff</td><td>Biome, Prettier, ESLint, Oxlint</td><td><span class="badge aware">Aware</span></td></tr>
+    <tr><td>Deployment platform</td><td>K8s / cloud VMs</td><td>Vercel, Cloudflare, self-hosted Docker</td><td><span class="badge use">Use</span></td></tr>
+  </tbody>
+</table>
+
+<p>Two rows have no real counterpart in your world, and they are exactly where newcomers get confused: <strong>"type checking is separate from transpiling"</strong> and <strong>"bundling"</strong>. Let's start there.</p>
+
+<h2 id="pipeline">The pipeline: from a .ts file to a running app</h2>
+
+<figure class="diagram">
+<div class="diagram-scroll">
+<svg viewBox="0 0 780 300" role="img" aria-label="TypeScript build pipeline">
+  <defs>
+    <marker id="a1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="ar-fill"/></marker>
+    <marker id="a2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="ar-deep"/></marker>
+  </defs>
+  <rect x="10" y="110" width="120" height="70" rx="10" class="box-accent"/>
+  <text x="70" y="140" text-anchor="middle" font-weight="700" font-size="14">Source</text>
+  <text x="70" y="160" text-anchor="middle" font-size="12" class="t-mono t-soft">.ts / .tsx</text>
+
+  <rect x="180" y="20" width="170" height="70" rx="10" class="box-deep"/>
+  <text x="265" y="48" text-anchor="middle" font-weight="700" font-size="13.5">Type check: tsc</text>
+  <text x="265" y="68" text-anchor="middle" font-size="11.5" class="t-soft">reports errors, emits nothing</text>
+
+  <rect x="180" y="110" width="170" height="70" rx="10" class="box"/>
+  <text x="265" y="138" text-anchor="middle" font-weight="700" font-size="13.5">Transpile: strip types</text>
+  <text x="265" y="158" text-anchor="middle" font-size="11.5" class="t-soft">esbuild / Oxc / Node</text>
+
+  <rect x="400" y="110" width="170" height="70" rx="10" class="box"/>
+  <text x="485" y="138" text-anchor="middle" font-weight="700" font-size="13.5">Bundle</text>
+  <text x="485" y="158" text-anchor="middle" font-size="11.5" class="t-soft">merge · split · minify</text>
+
+  <rect x="620" y="60" width="150" height="60" rx="10" class="box-use"/>
+  <text x="695" y="86" text-anchor="middle" font-weight="700" font-size="13">Browser output</text>
+  <text x="695" y="104" text-anchor="middle" font-size="11" class="t-soft">JS · CSS · assets</text>
+
+  <rect x="620" y="170" width="150" height="60" rx="10" class="box-purple"/>
+  <text x="695" y="196" text-anchor="middle" font-weight="700" font-size="13">Server output</text>
+  <text x="695" y="214" text-anchor="middle" font-size="11" class="t-soft">Node / Worker code</text>
+
+  <line x1="130" y1="135" x2="176" y2="60" class="ln-deep ln-dash" marker-end="url(#a2)"/>
+  <line x1="130" y1="145" x2="176" y2="145" class="ln" marker-end="url(#a1)"/>
+  <line x1="350" y1="145" x2="396" y2="145" class="ln" marker-end="url(#a1)"/>
+  <line x1="570" y1="135" x2="616" y2="95" class="ln" marker-end="url(#a1)"/>
+  <line x1="570" y1="155" x2="616" y2="195" class="ln" marker-end="url(#a1)"/>
+
+  <text x="265" y="220" text-anchor="middle" font-size="12" class="t-deep">The two paths don't wait for each other:</text>
+  <text x="265" y="238" text-anchor="middle" font-size="12" class="t-deep">type errors don't stop runnable output below</text>
+  <text x="485" y="220" text-anchor="middle" font-size="11.5" class="t-mute">In dev, the dev server transpiles on demand;</text>
+  <text x="485" y="236" text-anchor="middle" font-size="11.5" class="t-mute">edit a line, the browser updates in ms (HMR)</text>
+  <text x="390" y="285" text-anchor="middle" font-size="12" class="t-soft">Vite / Next.js wrap "transpile + bundle + dev server" into one command; tsc usually runs separately in the editor and CI</text>
+</svg>
+</div>
+<figcaption>The red dashed line is type checking. It's a side path: it can stop you from merging (in CI), but it doesn't take part in producing output.</figcaption>
+</figure>
+
+<h3>The core principle: type checking and transpiling are two different jobs <span class="badge deep">Deep</span></h3>
+
+<p>In Java a type error means compilation fails: no .class file, the program can't run. TS is different. One of TypeScript's design goals is that <strong>types exist only while you write code and are completely absent at runtime</strong>. This is called <strong>type erasure</strong>. The transpiler's job is almost mechanical: delete the type annotations, and what remains is valid JavaScript.</p>
+
+<script type="text/plain" class="code" data-lang="ts" data-title="src/price.ts (source)">
+function total(price: number, qty: number): number {
+  return price * qty;
+}
+total("9.9", 2);   // tsc error: string is not assignable to number
+</script>
+
+<script type="text/plain" class="code" data-lang="js" data-title="after transpiling (types deleted)">
+function total(price, qty) {
+  return price * qty;
+}
+total("9.9", 2);   // runs anyway: 19.8 — JS silently coerced "9.9" to a number
+</script>
+
+<p>Because "deleting types" doesn't require understanding them, transpilers written in Go or Rust such as esbuild and SWC can process hundreds of thousands of lines per second. Since Node.js 23.6, Node can run <code>.ts</code> files directly (built-in type stripping), and Node 26 makes it stable default behavior. But note: <strong>Node only deletes types; it does not type-check</strong>.</p>
+
+<div class="callout warn">
+  <span class="callout-title">What this means for driving agents</span>
+  <p>When an agent says "I ran it and it works", that only tells you the transpiled JS runs — not that the types are right. Your acceptance criteria should <strong>explicitly require type checking to pass</strong> (e.g. <code>pnpm tsc --noEmit</code> with zero errors), enforced in CI. Chapter 10 makes this part of the pipeline.</p>
+</div>
+
+<p><strong>TypeScript 7</strong>, released in July 2026, rewrote the compiler in Go as a native binary; type checking large projects got roughly 10× faster. It changed the speed, not the language: your code and the typing rules are the same. The practical effect: type checking is now cheap, so there's no excuse to skip it.</p>
+
+<h3>Why the frontend needs "bundling" <span class="badge aware">Aware</span></h3>
+
+<p>Go compiles a program into one binary that the server loads from local disk; size and file count barely matter. Browsers are different: <strong>code is downloaded over the network to every user's device</strong>. A project can have thousands of modules (your code plus what's in node_modules), and fetching them one by one would be unacceptably slow. A bundler solves exactly that:</p>
+
+<ul>
+  <li><strong>Merging</strong>: turn thousands of modules into a handful of files, fewer requests.</li>
+  <li><strong>Tree shaking</strong>: keep only code that's actually used; drop unused exports.</li>
+  <li><strong>Code splitting</strong>: split by page or route so the first screen only downloads what it needs.</li>
+  <li><strong>Minifying</strong>: strip whitespace, shorten names, shrink size.</li>
+  <li><strong>Non-JS assets</strong>: CSS, images, fonts — with content hashes in file names for long-term caching.</li>
+</ul>
+
+<p>The two names you'll meet most in 2026: <strong>Vite</strong> (since Vite 8 it uses the Rust-based Rolldown bundler for everything; TanStack Start, React Router, Astro and SvelteKit are built on it) and <strong>Turbopack</strong> (Next.js's default bundler). They're in the Aware tier: you'll rarely configure them by hand, and when they fail it's usually an explicit build error.</p>
+
+<h2 id="runtimes">Runtimes: where JS actually executes</h2>
+
+<p>A JavaScript engine such as V8 only executes the language itself: variables, functions, objects. Capabilities like "read a file", "make a network request" or "manipulate the page" are provided by a <strong>host environment</strong>. Different hosts are different runtimes.</p>
+
+<table>
+  <thead><tr><th>Runtime</th><th>Where</th><th>Characteristics</th><th>Depth</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Browser</strong></td><td>User's device</td><td>Has the DOM (page structure) and events; no file system; code is fully visible to users</td><td><span class="badge deep">Deep</span></td></tr>
+    <tr><td><strong>Node.js</strong></td><td>Server / your machine</td><td>The de facto standard; biggest ecosystem; even-numbered versions become LTS</td><td><span class="badge use">Use</span></td></tr>
+    <tr><td><strong>Bun</strong></td><td>Server / your machine</td><td>All-in-one: runtime + package manager + test runner + bundler; fast startup; highly Node-compatible</td><td><span class="badge aware">Aware</span></td></tr>
+    <tr><td><strong>Deno</strong></td><td>Server / your machine</td><td>Secure by default (file and network access need explicit permission); npm-compatible</td><td><span class="badge aware">Aware</span></td></tr>
+    <tr><td><strong>workerd</strong></td><td>Cloudflare edge</td><td>V8 isolates, extremely fast startup; CPU and memory limits; most Node APIs available via compat</td><td><span class="badge use">Use</span></td></tr>
+  </tbody>
+</table>
+
+<p>A key fact that lets these runtimes share code: they're all converging on <strong>Web-standard APIs</strong> — <code>fetch</code>, <code>Request</code>, <code>Response</code>, <code>URL</code>, <code>ReadableStream</code>, <code>crypto.subtle</code>. If your server code sticks to those, it runs unchanged on Node, Bun, Deno and Cloudflare. That's how frameworks like Hono achieve "one codebase, deploy anywhere".</p>
+
+<script type="text/plain" class="code" data-lang="ts" data-title="A request handler using only Web-standard APIs">
+// Standard Request in, standard Response out — valid on any modern runtime
+export default {
+  async fetch(req: Request): Promise<Response> {
+    const url = new URL(req.url);
+    return Response.json({ path: url.pathname, time: Date.now() });
+  },
+};
+</script>
+
+<div class="callout analogy">
+  <span class="callout-title">Analogy</span>
+  <p>Think of V8 as the bytecode execution engine inside the JVM, and a runtime as "the JDK standard library plus the launcher". Java on servers and on Android is the same language with different standard libraries; JS in browsers and in Node is the same language with different host APIs. <strong>Where it breaks:</strong> JS has no single standard-library publisher; the intersection of the runtimes' APIs is what's portable.</p>
+</div>
+
+<h2 id="packages">Package management: package.json and node_modules</h2>
+
+<p>Every JS/TS project has a <code>package.json</code> at its root — the equivalent of <code>pom.xml</code> or <code>go.mod</code>:</p>
+
+<script type="text/plain" class="code" data-lang="json" data-title="package.json (excerpt)">
+{
+  "name": "linknote",
+  "type": "module",
+  "scripts": {
+    "dev": "vite dev",
+    "build": "vite build",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest"
+  },
+  "dependencies": {
+    "react": "^19.2.0",
+    "zod": "^4.1.0"
+  },
+  "devDependencies": {
+    "typescript": "^7.0.0",
+    "vitest": "^4.0.0"
+  }
+}
+</script>
+
+<ul>
+  <li><strong><code>scripts</code></strong>: the project's "command menu". <code>pnpm dev</code> runs <code>vite dev</code>. When reading an unfamiliar project, look here first.</li>
+  <li><strong><code>dependencies</code> vs <code>devDependencies</code></strong>: needed at runtime vs only needed for development and builds.</li>
+  <li><strong><code>^19.2.0</code></strong>: a semver range, "any 19.x compatible with 19.2.0". Which exact version gets installed is decided by the <strong>lockfile</strong>, e.g. <code>pnpm-lock.yaml</code>. Always commit the lockfile.</li>
+  <li><strong><code>"type": "module"</code></strong>: declares modern ES modules (<code>import</code>/<code>export</code>). Chapter 03 explains how that differs from old CommonJS (<code>require</code>).</li>
+</ul>
+
+<p><strong>Which package manager?</strong> We recommend <strong>pnpm</strong>: it keeps all packages in one global content-addressed store and links them, so it's fast and saves disk; and its dependency layout is strict — if a package isn't declared in your package.json, your code can't import it, which prevents "works on my machine" phantom dependencies. npm ships with Node and is the default choice; bun is very fast and a good fit if you already use the Bun runtime.</p>
+
+<div class="callout warn">
+  <span class="callout-title">Supply-chain security (you must know this)</span>
+  <p>npm dependency trees are deep — a project easily pulls in over a thousand transitive packages — and recent years have seen repeated incidents of malicious packages and hijacked maintainer accounts publishing poisoned versions. Minimum habits: commit the lockfile; use <code>pnpm install --frozen-lockfile</code> in CI; since pnpm 10, dependency install scripts (postinstall) don't run by default — don't casually re-enable them globally; when an agent adds a dependency, require it to state <strong>why it's needed, its weekly downloads, and its recent maintenance activity</strong>.</p>
+</div>
+
+<h2 id="frameworks">Framework layers: who owns the UI, routing and data</h2>
+
+<p>"Framework" means very different things in the TS ecosystem. Split by responsibility into three layers, it becomes clear:</p>
+
+<figure class="diagram">
+<div class="diagram-scroll">
+<svg viewBox="0 0 780 250" role="img" aria-label="Framework layers">
+  <rect x="10" y="10" width="760" height="70" rx="10" class="box-accent"/>
+  <text x="30" y="38" font-weight="700" font-size="14">Meta-framework / full-stack framework</text>
+  <text x="30" y="60" font-size="12" class="t-soft">Routing · server rendering · data loading · server functions · build. E.g. Next.js, TanStack Start, React Router, Astro</text>
+  <rect x="10" y="95" width="370" height="70" rx="10" class="box-purple"/>
+  <text x="30" y="123" font-weight="700" font-size="14">UI library</text>
+  <text x="30" y="145" font-size="12" class="t-soft">Turns state into UI. E.g. React (mainstream), Vue, Svelte</text>
+  <rect x="400" y="95" width="370" height="70" rx="10" class="box-ok"/>
+  <text x="420" y="123" font-weight="700" font-size="14">Backend / API framework</text>
+  <text x="420" y="145" font-size="12" class="t-soft">Handles HTTP requests. E.g. Hono, Express, Fastify, NestJS</text>
+  <rect x="10" y="180" width="760" height="60" rx="10" class="box-soft"/>
+  <text x="30" y="206" font-weight="700" font-size="14">Supporting libraries</text>
+  <text x="30" y="226" font-size="12" class="t-soft">Styling Tailwind · components shadcn/ui · validation Zod · DB Drizzle/Prisma · caching TanStack Query · auth Better Auth · AI SDK</text>
+</svg>
+</div>
+<figcaption>A meta-framework wraps a UI library and has a backend built in; you can also skip it and pair a UI library with a standalone backend framework.</figcaption>
+</figure>
+
+<p>The biggest difference from the Java world: <strong>one meta-framework project is both frontend and backend</strong>. A Next.js app contains React components alongside server code that handles HTTP and reads/writes the database — same repo, same language, and they can even import each other's types. That brings enormous convenience (end-to-end type safety, Chapter 08) and a new risk (server code accidentally bundled for the browser, Chapter 07).</p>
+
+<h2 id="stacks">The three mainstream stacks of 2026</h2>
+
+<p>These three combinations cover most new projects. What they share far outweighs how they differ: <strong>TypeScript + React + Tailwind + Zod + Drizzle + Vitest</strong> works on all three. The differences are mostly the meta-framework and "where it runs".</p>
+
+<div class="cards">
+  <div class="card">
+    <h4>▲ The Vercel stack</h4>
+    <p><strong>Next.js</strong> (App Router, React Server Components, Server Actions) + shadcn/ui + Postgres (Neon / Supabase) + Better Auth or Clerk + AI SDK → deployed on Vercel.</p>
+    <p class="muted" style="margin-top:6px">Strengths: the most material, the most familiar to agents, zero-config deploys.</p>
+  </div>
+  <div class="card">
+    <h4>☁ The Cloudflare stack</h4>
+    <p><strong>TanStack Start</strong> / React Router / <strong>Hono</strong> + Vite + D1 (SQLite) / KV / R2 + Durable Objects + Agents SDK → deployed on Workers.</p>
+    <p class="muted" style="margin-top:6px">Strengths: low cost, low global latency, storage and stateful compute built in — great for AI agents and realtime apps.</p>
+  </div>
+  <div class="card">
+    <h4>🖥 The self-hosted stack</h4>
+    <p>TanStack Start / Next.js (standalone output) / Hono on Node or Bun + Postgres + Redis → Docker on a VPS (with Coolify, Dokploy or Kamal).</p>
+    <p class="muted" style="margin-top:6px">Strengths: no platform limits, predictable cost, full control over data.</p>
+  </div>
+</div>
+
+<div class="callout tip">
+  <span class="callout-title">Suggested order of decisions</span>
+  <p>Learn the shared parts first; choose the platform last. For your first project, <strong>pick whichever you can deploy fastest</strong> — usually Vercel + Next.js (most material) or Cloudflare + TanStack Start/Hono (lowest cost). Chapter 09 has a finer decision tree.</p>
+</div>
+
+<h2 id="versions">Version snapshot (September 2026)</h2>
+
+<p>This table will age, but it helps you notice when an agent's code is "too old" (models have training cutoffs and often write the previous generation's APIs).</p>
+
+<table>
+  <thead><tr><th>Project</th><th>Current state</th><th>What it means for you</th></tr></thead>
+  <tbody>
+    <tr><td>TypeScript</td><td>7.x (native Go compiler)</td><td>~10× faster type checking; the language itself barely changed</td></tr>
+    <tr><td>Node.js</td><td>24 is LTS; 26 becomes LTS in October 2026</td><td>Runs .ts directly (type stripping only); pick the latest LTS for new projects</td></tr>
+    <tr><td>React</td><td>19.x; React Compiler 1.0 is stable</td><td>Far less need for hand-written <code>useMemo</code>/<code>useCallback</code></td></tr>
+    <tr><td>Next.js</td><td>16.x</td><td>App Router is the default; Turbopack is the default bundler</td></tr>
+    <tr><td>TanStack Start</td><td>v1</td><td>A Vite-based full-stack framework; type-safe routing is its signature</td></tr>
+    <tr><td>Vite</td><td>8 (Rolldown built in)</td><td>Much faster production builds</td></tr>
+    <tr><td>Tailwind CSS</td><td>v4</td><td>Config lives in CSS, not <code>tailwind.config.js</code>; agents often write v3 style</td></tr>
+    <tr><td>Zod</td><td>v4</td><td>The de facto standard for runtime validation</td></tr>
+    <tr><td>AI SDK (Vercel)</td><td>v6</td><td>Agent abstraction (<code>ToolLoopAgent</code>), tool approval, etc.</td></tr>
+  </tbody>
+</table>
+
+<div class="callout agent">
+  <span class="callout-title">Tell the agent</span>
+  <div class="compare">
+    <div class="head bad">Vague</div><div class="head good">Precise</div>
+    <div class="bad">"Build me a full-stack website."</div>
+    <div class="good">"Create a TanStack Start project with pnpm: TypeScript strict mode, Tailwind v4, deploy target Cloudflare Workers. Only a home page and an /api/health route for now — no database, no auth. When done, run <code>pnpm tsc --noEmit</code> and <code>pnpm build</code> and paste me the output."</div>
+    <div class="row-sep"></div>
+    <div class="bad">"Add a library for dates."</div>
+    <div class="good">"I need relative time formatting ('3 days ago'). Prefer the built-in <code>Intl.RelativeTimeFormat</code>; if a dependency is truly needed, list candidates with their size and maintenance status and wait for my confirmation."</div>
+  </div>
+  <p>The precise versions do three things: <strong>they choose every layer</strong> (package manager, framework, styling, platform), <strong>they bound the scope</strong> (what not to add yet), and <strong>they give a checkable definition of done</strong>.</p>
+</div>
+
+<div class="callout interview">
+  <span class="callout-title">Interview corner</span>
+  <p><strong>Q: How do TypeScript and JavaScript relate? How does TS code run?</strong></p>
+  <p>Key points: TS is a superset of JS that only adds a static type system; types are checked at compile time and fully erased at runtime. TS must become JS before running — <code>tsc</code> can do it, but in practice esbuild / SWC / Vite or Node's built-in type stripping usually do, while <code>tsc</code> only type-checks (<code>--noEmit</code>). So types don't replace runtime validation; external input still needs a library like Zod.</p>
+</div>
+
+<h2 id="check">Self-check</h2>
+
+<details class="check">
+  <summary>1. A colleague ran <code>node app.ts</code> successfully and concluded "the types are fine". Are they right?</summary>
+  <div class="answer"><p>No. Node's type stripping deletes annotations without checking them. Running only proves the transpiled JS is syntactically valid. To confirm the types, run <code>tsc --noEmit</code> (or rely on the editor's TS language service).</p></div>
+</details>
+
+<details class="check">
+  <summary>2. Some server code uses <code>fs.readFileSync</code> to read a local template, and now you're deploying it to Cloudflare Workers. What problem do you expect?</summary>
+  <div class="answer"><p>Workers run in V8 isolates without a traditional, freely readable/writable local file system. There's a Node compatibility layer, but "read any file on the deployment machine" doesn't hold. Typical fixes: bundle the template into the code at build time, serve it as a static asset, or store it in R2/KV. The shape of the runtime affects how you write code.</p></div>
+</details>
+
+<details class="check">
+  <summary>3. Why doesn't a Go backend need the concept of a "bundler" while the frontend can't live without one?</summary>
+  <div class="answer"><p>Because frontend code is downloaded over the network into every user's browser. File count, size and caching directly decide load speed; the bundler merges, tree-shakes, splits, minifies and hashes. A Go binary loads from local disk, so none of that applies.</p></div>
+</details>
+
+</article></main>
+</body>
+</html>

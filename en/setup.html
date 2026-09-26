@@ -1,0 +1,345 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Setup & Your First Project · Vibe Hero</title>
+<meta name="description" content="A reproducible TypeScript environment: Node version management, pnpm, the editor, tsconfig, environment variables and your first project.">
+<!-- seo -->
+<link rel="canonical" href="https://uxgnod.github.io/vibe-hero/en/setup.html">
+<link rel="alternate" hreflang="zh-CN" href="https://uxgnod.github.io/vibe-hero/zh/setup.html">
+<link rel="alternate" hreflang="en" href="https://uxgnod.github.io/vibe-hero/en/setup.html">
+<link rel="alternate" hreflang="x-default" href="https://uxgnod.github.io/vibe-hero/en/setup.html">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Vibe Hero">
+<meta property="og:title" content="Setup &amp; Your First Project · Vibe Hero">
+<meta property="og:description" content="A reproducible TypeScript environment: Node version management, pnpm, the editor, tsconfig, environment variables and your first project.">
+<meta property="og:url" content="https://uxgnod.github.io/vibe-hero/en/setup.html">
+<meta property="og:image" content="https://uxgnod.github.io/vibe-hero/assets/og-image.png">
+<meta property="og:locale" content="en_US">
+<meta property="og:locale:alternate" content="zh_CN">
+<meta name="twitter:card" content="summary_large_image">
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "TechArticle", "headline": "Setup & Your First Project", "description": "A reproducible TypeScript environment: Node version management, pnpm, the editor, tsconfig, environment variables and your first project.", "inLanguage": "en", "url": "https://uxgnod.github.io/vibe-hero/en/setup.html", "image": "https://uxgnod.github.io/vibe-hero/assets/og-image.png", "dateModified": "2026-09-26", "author": {"@type": "Person", "name": "uxgnod", "url": "https://github.com/uxgnod"}, "isPartOf": {"@type": "WebSite", "name": "Vibe Hero", "url": "https://uxgnod.github.io/vibe-hero/"}}</script>
+<link rel="icon" href="../assets/favicon.svg">
+<link rel="stylesheet" href="../assets/style.css">
+<script>try{var t=localStorage.getItem('vh-theme');if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+<script defer src="../assets/app.js"></script>
+<script defer src="../assets/widgets.js"></script>
+</head>
+<body>
+<main class="content"><article class="doc">
+
+<p class="eyebrow">CHAPTER 02 · START</p>
+<h1>Setup & Your First Project</h1>
+<p class="lead">The goal isn't "software installed". It's a <strong>reproducible</strong> environment: your laptop, a teammate's laptop, CI, and an agent's sandbox all produce the same result from the same project.</p>
+<div class="meta"><span>⏱ ~45 min (hands-on)</span><span class="badge use">Use</span><span>The env-var exposure rule is <span class="badge deep">Deep</span></span></div>
+
+<div class="goals">
+  <div class="goals-title">By the end of this chapter you should be able to:</div>
+  <ul>
+    <li>Install and pin a Node version with a version manager, and manage dependencies with pnpm.</li>
+    <li>Read the six most important options in a <code>tsconfig.json</code>.</li>
+    <li>Explain why env vars prefixed <code>VITE_</code> / <code>NEXT_PUBLIC_</code> must never hold secrets.</li>
+    <li>Create your first React + TS project and write an <code>AGENTS.md</code> for it.</li>
+  </ul>
+</div>
+
+<h2 id="question">Opening: "works on my machine"</h2>
+
+<div class="callout question">
+  <span class="callout-title">Opening question</span>
+  <p>Same repo. <code>pnpm dev</code> works for your teammate; you get <code>SyntaxError: Unexpected token</code>; the agent's sandbox reports <code>Cannot find module</code>. <strong>The code is identical — why are the results different?</strong></p>
+</div>
+
+<p><strong>Where the answer lies:</strong> "the code" is only one input to the result. The other three are the <strong>Node version</strong>, the <strong>package manager and its version</strong>, and <strong>the exact installed dependency versions (decided by the lockfile)</strong>. If any of them differs, the result may differ. A reproducible environment writes all three into the repo.</p>
+
+<figure class="diagram">
+<div class="diagram-scroll">
+<svg viewBox="0 0 780 210" role="img" aria-label="Four inputs of a reproducible environment">
+  <defs><marker id="s1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="ar-fill"/></marker></defs>
+  <g font-size="13">
+    <rect x="10" y="30" width="170" height="80" rx="10" class="box-accent"/>
+    <text x="95" y="60" text-anchor="middle" font-weight="700">Node version</text>
+    <text x="95" y="82" text-anchor="middle" font-size="11.5" class="t-mono t-soft">.nvmrc / mise.toml</text>
+    <text x="95" y="98" text-anchor="middle" font-size="11" class="t-mute">"engines" field</text>
+
+    <rect x="200" y="30" width="170" height="80" rx="10" class="box-purple"/>
+    <text x="285" y="60" text-anchor="middle" font-weight="700">Package manager</text>
+    <text x="285" y="82" text-anchor="middle" font-size="11.5" class="t-mono t-soft">"packageManager"</text>
+    <text x="285" y="98" text-anchor="middle" font-size="11" class="t-mute">pnpm@10.x</text>
+
+    <rect x="390" y="30" width="170" height="80" rx="10" class="box-use"/>
+    <text x="475" y="60" text-anchor="middle" font-weight="700">Exact dep versions</text>
+    <text x="475" y="82" text-anchor="middle" font-size="11.5" class="t-mono t-soft">pnpm-lock.yaml</text>
+    <text x="475" y="98" text-anchor="middle" font-size="11" class="t-mute">must be committed</text>
+
+    <rect x="580" y="30" width="190" height="80" rx="10" class="box-ok"/>
+    <text x="675" y="60" text-anchor="middle" font-weight="700">Your code + config</text>
+    <text x="675" y="82" text-anchor="middle" font-size="11.5" class="t-mono t-soft">src/ · tsconfig.json</text>
+    <text x="675" y="98" text-anchor="middle" font-size="11" class="t-mute">.env.example (no real values)</text>
+  </g>
+  <line x1="390" y1="125" x2="390" y2="150" class="ln" marker-end="url(#s1)"/>
+  <rect x="220" y="155" width="340" height="44" rx="10" class="box"/>
+  <text x="390" y="182" text-anchor="middle" font-size="13" font-weight="700">Same result (you / teammate / CI / agent)</text>
+</svg>
+</div>
+<figcaption>Put all four inputs in the repo and the environment becomes reproducible. The only thing that stays out is real secrets, injected separately via environment variables.</figcaption>
+</figure>
+
+<h2 id="node">Step 1: install Node through a version manager <span class="badge use">Use</span></h2>
+
+<p>Don't download the installer from the website. Sooner or later you'll maintain projects that need different Node versions, and a version manager lets each project use its own automatically. We recommend <strong>mise</strong> (one tool for Node, pnpm, Python, Go and more) or <strong>fnm</strong> (Node only, minimal).</p>
+
+<script type="text/plain" class="code" data-lang="bash" data-title="macOS / Linux with mise">
+# install mise (see the mise website for other methods)
+curl https://mise.run | sh
+
+# use the latest LTS Node globally
+mise use -g node@lts
+
+# pin a version in a project (creates mise.toml — commit it)
+cd my-project
+mise use node@24
+
+node -v    # verify
+</script>
+
+<p>Node's versioning rule: <strong>even-numbered releases become long-term support (LTS)</strong>; odd ones are short-lived "Current" releases. Use LTS in production. As of September 2026, Node 24 is LTS and Node 26 becomes LTS in October.</p>
+
+<h2 id="pnpm">Step 2: install pnpm <span class="badge use">Use</span></h2>
+
+<script type="text/plain" class="code" data-lang="bash">
+# option 1: manage it with mise (recommended, alongside Node)
+mise use -g pnpm@latest
+
+# option 2: install globally with npm
+npm install -g pnpm
+
+pnpm -v
+</script>
+
+<p>Put <code>"packageManager": "pnpm@10.x.x"</code> (an exact version) in <code>package.json</code>; many tools — including CI and deployment platforms — use it to pick the same package manager version.</p>
+
+<p>The most common commands, mapped to tools you know:</p>
+
+<table>
+  <thead><tr><th>Task</th><th>pnpm</th><th>Analogy</th></tr></thead>
+  <tbody>
+    <tr><td>Install everything per the lockfile</td><td><code>pnpm install</code></td><td><code>go mod download</code></td></tr>
+    <tr><td>Strict install in CI</td><td><code>pnpm install --frozen-lockfile</code></td><td><code>npm ci</code></td></tr>
+    <tr><td>Add a runtime dependency</td><td><code>pnpm add zod</code></td><td><code>go get</code></td></tr>
+    <tr><td>Add a dev dependency</td><td><code>pnpm add -D vitest</code></td><td>Maven test scope</td></tr>
+    <tr><td>Run a script</td><td><code>pnpm dev</code> / <code>pnpm run build</code></td><td><code>make dev</code></td></tr>
+    <tr><td>Run a dependency's CLI</td><td><code>pnpm exec tsc</code> (or <code>pnpm tsc</code>)</td><td>—</td></tr>
+    <tr><td>Download and run a tool once</td><td><code>pnpm dlx create-vite</code></td><td><code>npx</code></td></tr>
+    <tr><td>Why is this package installed?</td><td><code>pnpm why lodash</code></td><td><code>go mod why</code></td></tr>
+  </tbody>
+</table>
+
+<h2 id="editor">Step 3: the editor — your most important learning tool <span class="badge use">Use</span></h2>
+
+<p>VS Code, Cursor, Zed or JetBrains WebStorm all work. They embed the TypeScript language service: while you type, it type-checks continuously in the background.</p>
+
+<div class="callout tip">
+  <span class="callout-title">The single most useful habit during the transition: hover for types</span>
+  <p>Hover over any variable, function or component and the editor shows its full type. When reading agent-generated code, this is the fastest way to understand the shape of the data — much faster than reading docs. <kbd>Cmd</kbd>/<kbd>Ctrl</kbd>-click jumps to the definition, including library type declarations inside node_modules.</p>
+</div>
+
+<p>Suggested extensions: <strong>Biome</strong> (format + lint; or ESLint + Prettier), <strong>Tailwind CSS IntelliSense</strong> (class name hints), <strong>Error Lens</strong> (shows errors inline at the end of the line).</p>
+
+<h2 id="agent-cli">Step 4: install a coding agent</h2>
+
+<p>This guide isn't tied to any one tool. Popular terminal agents include <strong>Claude Code</strong> (Anthropic), <strong>Codex CLI</strong> (OpenAI) and <strong>pi</strong> (open source, minimal, extensible in TypeScript). They all work on the same principles (Chapter 12 takes them apart). Follow each tool's official install instructions; most support <code>npm install -g</code>.</p>
+
+<p>Once installed, do one thing first: in an empty directory, ask it to "describe the environment you're running in" and check it can run <code>node -v</code> and <code>pnpm -v</code> correctly. That confirms the agent's execution environment matches your terminal.</p>
+
+<h2 id="first">Step 5: your first TypeScript program (no framework)</h2>
+
+<p>Leave React aside for now. Use the bare minimum to feel that "type checking" and "running" are two separate things:</p>
+
+<script type="text/plain" class="code" data-lang="bash">
+mkdir hello-ts && cd hello-ts
+pnpm init                       # creates package.json
+pnpm add -D typescript @types/node
+pnpm tsc --init                 # creates tsconfig.json
+</script>
+
+<script type="text/plain" class="code" data-lang="ts" data-title="hello.ts">
+type Link = { url: string; title?: string };   // title? means optional
+
+function describe(link: Link): string {
+  return `${link.title ?? "(untitled)"} → ${link.url}`;
+}
+
+console.log(describe({ url: "https://react.dev" }));
+console.log(describe({ url: 42 }));   // deliberately wrong
+</script>
+
+<script type="text/plain" class="code" data-lang="bash">
+node hello.ts          # Node runs it: both lines print (the second is "(untitled) → 42")
+pnpm tsc --noEmit      # type check: error Type 'number' is not assignable to type 'string'
+</script>
+
+<p>Running these two commands yourself teaches more than reading the definition of "type erasure" ten times. You'll see: <strong>the runner is lenient, the type checker is strict</strong> — and what you want guarding the door is the latter.</p>
+
+<h2 id="react-project">Step 6: scaffold LinkNote's frontend</h2>
+
+<p>While learning, start with the plain <strong>Vite + React</strong> template: fewest concepts, one runtime (the browser). You'll use it for React in Chapter 06 and switch to a full-stack framework in Chapter 07.</p>
+
+<script type="text/plain" class="code" data-lang="bash">
+pnpm create vite@latest linknote --template react-ts
+cd linknote
+pnpm install
+pnpm dev               # open the http://localhost:5173 URL shown in the terminal
+</script>
+
+<p>Other common scaffolding commands (check each official site):</p>
+
+<script type="text/plain" class="code" data-lang="bash">
+pnpm create next-app@latest          # Next.js (the Vercel stack)
+pnpm create cloudflare@latest        # Cloudflare project wizard, many frameworks
+pnpm create @tanstack/start@latest   # TanStack Start
+</script>
+
+<h3>Reading the project structure</h3>
+
+<table>
+  <thead><tr><th>Path</th><th>What it is</th><th>Commit it?</th></tr></thead>
+  <tbody>
+    <tr><td><code>src/</code></td><td>Your source. <code>main.tsx</code> is the entry, <code>App.tsx</code> the root component</td><td>Yes</td></tr>
+    <tr><td><code>public/</code></td><td>Static files copied as-is into the output (icons, etc.)</td><td>Yes</td></tr>
+    <tr><td><code>index.html</code></td><td>The first file the browser loads; it references <code>src/main.tsx</code></td><td>Yes</td></tr>
+    <tr><td><code>package.json</code> / <code>pnpm-lock.yaml</code></td><td>Declared deps / exact versions</td><td>Yes</td></tr>
+    <tr><td><code>tsconfig*.json</code></td><td>TypeScript configuration</td><td>Yes</td></tr>
+    <tr><td><code>vite.config.ts</code></td><td>Build tool configuration</td><td>Yes</td></tr>
+    <tr><td><code>node_modules/</code></td><td>Installed deps (rebuildable any time)</td><td><strong>No</strong></td></tr>
+    <tr><td><code>dist/</code></td><td>Build output</td><td><strong>No</strong></td></tr>
+    <tr><td><code>.env</code> / <code>.env.local</code></td><td>Local env vars (may contain secrets)</td><td><strong>No</strong> (commit <code>.env.example</code>)</td></tr>
+  </tbody>
+</table>
+
+<h2 id="tsconfig">tsconfig.json: these options are all you need to read <span class="badge use">Use</span></h2>
+
+<script type="text/plain" class="code" data-lang="jsonc" data-title="tsconfig.json (recommended key options)">
+{
+  "compilerOptions": {
+    "strict": true,                      // all strict checks on: mandatory
+    "noUncheckedIndexedAccess": true,    // arr[i] becomes T | undefined — forces you to handle out-of-range
+    "target": "ES2023",                  // JS syntax level of the output
+    "module": "ESNext",                  // ES modules (import/export)
+    "moduleResolution": "bundler",       // resolve imports the way bundlers do
+    "jsx": "react-jsx",                  // how JSX in .tsx is handled
+    "verbatimModuleSyntax": true,        // type-only imports must use `import type`
+    "noEmit": true,                      // tsc only checks; the bundler emits
+    "paths": { "@/*": ["./src/*"] }      // path alias: import x from "@/lib/x"
+  },
+  "include": ["src"]
+}
+</script>
+
+<ul>
+  <li><strong><code>strict</code></strong> is the most important. Turn it off and TS degrades into "JS with hints"; whole classes of bugs (like null access) go unreported. If an agent turns off strict or adds <code>// @ts-ignore</code> to silence an error, that's a signal to stop it.</li>
+  <li><strong><code>noUncheckedIndexedAccess</code></strong> is off by default but strongly recommended: <code>items[0]</code> might not exist, and that bug is extremely common in production.</li>
+  <li>If you plan to run <code>.ts</code> directly with Node, also consider <strong><code>erasableSyntaxOnly</code></strong>: it forbids TS syntax that generates code (such as <code>enum</code>), guaranteeing types can simply be stripped.</li>
+</ul>
+
+<h2 id="env">Environment variables: which ones reach the browser <span class="badge deep">Deep</span></h2>
+
+<p>This is one of the easiest mistakes to make and one of the most costly, which is why even a "setup" chapter goes down to the mechanism.</p>
+
+<p>In backend work, env vars exist only inside the server process — naturally private. In a frontend build, however, the bundler <strong>replaces</strong> certain env var references with <strong>literal values at build time</strong>, writing them into the JS files sent to browsers. To prevent accidental leaks, frameworks only do this for variables with a specific prefix.</p>
+
+<script type="text/plain" class="code" data-lang="bash" data-title=".env.local">
+# Prefixed: inlined into browser JS; any user can see it in devtools
+VITE_APP_NAME=LinkNote
+NEXT_PUBLIC_SITE_URL=https://linknote.example.com
+
+# Not prefixed: readable only in server-side code
+DATABASE_URL=postgres://user:password@host/db
+ANTHROPIC_API_KEY=sk-ant-...
+</script>
+
+<script type="text/plain" class="code" data-lang="ts" data-title="before build → after build (what the browser gets)">
+// what you wrote
+const name = import.meta.env.VITE_APP_NAME;
+// what the bundler emits into browser JS
+const name = "LinkNote";
+</script>
+
+<div class="callout warn">
+  <span class="callout-title">The rule</span>
+  <p><strong>A variable with a public prefix such as <code>VITE_</code> / <code>NEXT_PUBLIC_</code> is effectively published.</strong> API keys and database connection strings must never use those prefixes. If the browser needs to call an LLM, the correct approach is for the browser to call your own server, which calls the LLM with the key (Chapter 11).</p>
+</div>
+
+<h2 id="agents-md">Step 7: a handbook for your agent</h2>
+
+<p>Nearly every coding agent reads a project instructions file from the repo root at startup: <code>AGENTS.md</code> (a cross-tool convention) or <code>CLAUDE.md</code> (Claude Code). Think of it as onboarding docs for a new colleague. Write it as soon as the project exists, and be specific:</p>
+
+<script type="text/plain" class="code" data-lang="md" data-title="AGENTS.md">
+# LinkNote
+
+A bookmark app with AI summaries. Stack: React 19 + TypeScript (strict) + Vite + Tailwind v4.
+
+## Commands
+- Install: pnpm install (pnpm only — never npm/yarn)
+- Dev: pnpm dev
+- Type check: pnpm typecheck (must pass after every change)
+- Test: pnpm test
+- Lint/format: pnpm biome check --write
+
+## Conventions
+- Components live in src/components, one component per file, PascalCase names
+- All external input (forms, API responses, URL params) is validated with zod
+- No `any`; no @ts-ignore; use `unknown` + narrowing when needed
+- Explain and wait for confirmation before adding any dependency
+
+## Definition of done
+- typecheck, test and biome check all pass
+- Summarize which files changed and why
+</script>
+
+<p>Chapter 13 covers how to write this file well. For now, remember one principle: <strong>the second time you find yourself telling the agent the same thing, write it into AGENTS.md.</strong></p>
+
+<h2 id="troubleshoot">Common errors at a glance</h2>
+
+<table>
+  <thead><tr><th>Error</th><th>Usual cause</th><th>Fix</th></tr></thead>
+  <tbody>
+    <tr><td><code>command not found: pnpm</code></td><td>Not installed, or the shell didn't load the version manager</td><td>Reopen the terminal; check mise/fnm shell integration</td></tr>
+    <tr><td><code>Cannot find module 'x'</code></td><td>Deps not installed, or undeclared under pnpm's strict layout</td><td><code>pnpm install</code>; or <code>pnpm add x</code></td></tr>
+    <tr><td><code>ERR_REQUIRE_ESM</code> / <code>Cannot use import statement outside a module</code></td><td>Mixing ES modules and CommonJS (Chapter 03)</td><td>Check <code>"type": "module"</code> and file extensions</td></tr>
+    <tr><td><code>EADDRINUSE: address already in use :::5173</code></td><td>Port taken (often a dev server still running)</td><td>Kill the old process or change the port</td></tr>
+    <tr><td><code>Unsupported engine</code></td><td>Node version doesn't satisfy the project</td><td>Switch per the project's mise.toml / .nvmrc</td></tr>
+  </tbody>
+</table>
+
+<div class="callout agent">
+  <span class="callout-title">Tell the agent</span>
+  <div class="compare">
+    <div class="head bad">Vague</div><div class="head good">Precise</div>
+    <div class="bad">"The project won't start, fix it."</div>
+    <div class="good">"<code>pnpm dev</code> fails (full output below). Don't change any code yet: first tell me the Node version, the pnpm version, and whether the lockfile matches package.json; decide whether this is an environment or a code problem; then propose a fix."</div>
+  </div>
+  <p>Diagnose first, change second — the most effective way to stop an agent from "editing things until the error goes away".</p>
+</div>
+
+<h2 id="check">Self-check</h2>
+
+<details class="check">
+  <summary>1. You put <code>VITE_OPENAI_KEY=sk-...</code> in <code>.env</code>. It's only used on a "settings" page that requires login. Is that safe?</summary>
+  <div class="answer"><p>No. <code>VITE_</code>-prefixed variables are inlined into the JS at build time. JS files are static assets that can be downloaded without logging in (login protects page data, not the bundled scripts). Anyone can open the file and search for the key. Drop the prefix and use it only on the server.</p></div>
+</details>
+
+<details class="check">
+  <summary>2. Why must the lockfile be committed while node_modules must not?</summary>
+  <div class="answer"><p>The lockfile records the exact version and checksum of every dependency, including transitive ones — the key to reproducibility — and it's small text. node_modules can be rebuilt from the lockfile at any time, is huge, and may contain OS-specific binaries.</p></div>
+</details>
+
+<details class="check">
+  <summary>3. To fix a type error, an agent set <code>strict</code> to <code>false</code> in tsconfig and then reported "type check passes". What do you make of it?</summary>
+  <div class="answer"><p>It silenced the check instead of fixing the problem. Turning off strict stops reporting many real defects (like null access). Revert that change, require the agent to fix the specific error under strict mode, and add "never change tsconfig strictness options" to AGENTS.md.</p></div>
+</details>
+
+</article></main>
+</body>
+</html>

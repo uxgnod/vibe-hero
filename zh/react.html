@@ -1,0 +1,418 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>React 心智模型 · Vibe Hero</title>
+<meta name="description" content="UI = f(state)：组件、状态、重渲染规则、Effect 的正确用法、数据获取、表单 Actions 与状态管理选择。">
+<!-- seo -->
+<link rel="canonical" href="https://uxgnod.github.io/vibe-hero/zh/react.html">
+<link rel="alternate" hreflang="zh-CN" href="https://uxgnod.github.io/vibe-hero/zh/react.html">
+<link rel="alternate" hreflang="en" href="https://uxgnod.github.io/vibe-hero/en/react.html">
+<link rel="alternate" hreflang="x-default" href="https://uxgnod.github.io/vibe-hero/en/react.html">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Vibe Hero">
+<meta property="og:title" content="React 心智模型 · Vibe Hero">
+<meta property="og:description" content="UI = f(state)：组件、状态、重渲染规则、Effect 的正确用法、数据获取、表单 Actions 与状态管理选择。">
+<meta property="og:url" content="https://uxgnod.github.io/vibe-hero/zh/react.html">
+<meta property="og:image" content="https://uxgnod.github.io/vibe-hero/assets/og-image.png">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:locale:alternate" content="en_US">
+<meta name="twitter:card" content="summary_large_image">
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "TechArticle", "headline": "React 心智模型", "description": "UI = f(state)：组件、状态、重渲染规则、Effect 的正确用法、数据获取、表单 Actions 与状态管理选择。", "inLanguage": "zh-CN", "url": "https://uxgnod.github.io/vibe-hero/zh/react.html", "image": "https://uxgnod.github.io/vibe-hero/assets/og-image.png", "dateModified": "2026-09-26", "author": {"@type": "Person", "name": "uxgnod", "url": "https://github.com/uxgnod"}, "isPartOf": {"@type": "WebSite", "name": "Vibe Hero", "url": "https://uxgnod.github.io/vibe-hero/"}}</script>
+<link rel="icon" href="../assets/favicon.svg">
+<link rel="stylesheet" href="../assets/style.css">
+<script>try{var t=localStorage.getItem('vh-theme');if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+<script defer src="../assets/app.js"></script>
+<script defer src="../assets/widgets.js"></script>
+</head>
+<body>
+<main class="content"><article class="doc">
+
+<p class="eyebrow">CHAPTER 06 · 前端</p>
+<h1>React 心智模型</h1>
+<p class="lead">React 的 API 不多，难的是换一种思考方式：你不再“修改界面”，而是“描述在某个状态下界面应该长什么样”。掌握这个模型和几条重渲染规则，你就能看出 Agent 写的组件哪里多余、哪里会出 bug。</p>
+<div class="meta"><span>⏱ 约 70 分钟</span><span class="badge deep">原理</span>（渲染模型、State、Effect）<span class="badge use">会用</span>（Hooks、表单、TanStack Query）</div>
+
+<div class="goals">
+  <div class="goals-title">读完本章，你应该能够：</div>
+  <ul>
+    <li>解释一次点击之后 React 内部的完整流程：事件 → 更新状态 → 重新执行组件函数 → 比对 → 更新 DOM。</li>
+    <li>预测某个状态变化会让哪些组件重新渲染。</li>
+    <li>判断一个 <code>useEffect</code> 是否必要，并说出三种常见的替代写法。</li>
+    <li>为任意一份数据选择合适的“住处”：局部状态、提升的状态、URL、服务器缓存、全局 store。</li>
+  </ul>
+</div>
+
+<h2 id="question">开场：两个“看不懂”的现象</h2>
+
+<div class="callout question">
+  <span class="callout-title">开场问题</span>
+  <p>现象一：你在组件里写 <code>let count = 0</code>，按钮点击时 <code>count++</code>。日志显示 count 在增加，界面上的数字却一直是 0。</p>
+  <p>现象二：Agent 写了一个组件，用 <code>useEffect</code> 请求收藏列表。上线后发现浏览器在疯狂地重复请求同一个接口。</p>
+  <p><strong>这两个现象背后是同一个机制。是什么？</strong></p>
+</div>
+
+<p><strong>答案方向：</strong>React 组件是一个<strong>会被反复调用的函数</strong>。每次“渲染”就是重新调用一次这个函数。普通局部变量在每次调用时都重新初始化，而且修改它也不会触发新的调用；只有交给 React 保管的“状态（state）”才能跨调用保留、并在改变时触发重新调用。而 Effect 在每次渲染后按条件执行——如果它自己又改变了状态，并且依赖条件每次都“看起来变了”，就形成了“渲染 → Effect → 改状态 → 渲染”的死循环。</p>
+
+<h2 id="model">核心模型：UI = f(state)</h2>
+
+<figure class="diagram">
+<div class="diagram-scroll">
+<svg viewBox="0 0 780 300" role="img" aria-label="React 更新循环">
+  <defs><marker id="r1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="ar-accent"/></marker></defs>
+  <rect x="20" y="110" width="130" height="80" rx="12" class="box-deep"/>
+  <text x="85" y="142" text-anchor="middle" font-weight="700" font-size="14">State</text>
+  <text x="85" y="162" text-anchor="middle" font-size="11.5" class="t-soft">React 保管的数据</text>
+  <rect x="210" y="110" width="150" height="80" rx="12" class="box-accent"/>
+  <text x="285" y="138" text-anchor="middle" font-weight="700" font-size="14">组件函数</text>
+  <text x="285" y="158" text-anchor="middle" font-size="11.5" class="t-soft">重新执行（渲染）</text>
+  <text x="285" y="175" text-anchor="middle" font-size="11" class="t-mute">必须是纯计算</text>
+  <rect x="420" y="110" width="150" height="80" rx="12" class="box-purple"/>
+  <text x="495" y="138" text-anchor="middle" font-weight="700" font-size="14">新的 JSX 树</text>
+  <text x="495" y="158" text-anchor="middle" font-size="11.5" class="t-soft">对界面的“描述”</text>
+  <text x="495" y="175" text-anchor="middle" font-size="11" class="t-mute">与上次比对（diff）</text>
+  <rect x="630" y="110" width="130" height="80" rx="12" class="box-ok"/>
+  <text x="695" y="142" text-anchor="middle" font-weight="700" font-size="14">DOM</text>
+  <text x="695" y="162" text-anchor="middle" font-size="11.5" class="t-soft">只改有差异的部分</text>
+  <line x1="152" y1="150" x2="206" y2="150" class="ln-accent" marker-end="url(#r1)"/>
+  <line x1="362" y1="150" x2="416" y2="150" class="ln-accent" marker-end="url(#r1)"/>
+  <line x1="572" y1="150" x2="626" y2="150" class="ln-accent" marker-end="url(#r1)"/>
+  <path d="M695 192 C 695 270, 85 270, 85 194" class="ln-accent ln-dash" marker-end="url(#r1)"/>
+  <text x="390" y="262" text-anchor="middle" font-size="12.5">用户点击 → 事件处理函数调用 setState(新值) → 触发下一轮</text>
+  <text x="390" y="40" text-anchor="middle" font-size="13" class="t-soft">你只负责两件事：①写出“状态 → 界面”的纯函数　②在事件里更新状态</text>
+  <text x="390" y="62" text-anchor="middle" font-size="13" class="t-soft">“比对并修改 DOM”全部由 React 完成</text>
+</svg>
+</div>
+<figcaption>React 的更新循环。中间两步（渲染与比对）在 React 术语里叫 render 和 reconciliation，最后一步叫 commit。</figcaption>
+</figure>
+
+<div class="callout analogy">
+  <span class="callout-title">类比：模板引擎，但会自动重跑</span>
+  <p>如果你写过服务器端模板（JSP、Jinja、Go template），组件函数很像一个模板：输入数据，输出 HTML。区别在于：服务器模板只渲染一次；React 的“模板”在数据变化时会被<em>自动重新执行</em>，并且只把差异应用到页面上，不整页刷新。</p>
+  <p><strong>失配点：</strong>模板里通常可以随意执行查询等副作用；React 的组件函数要求是<strong>纯</strong>的（同样的输入 → 同样的输出，不修改外部世界），因为 React 可能在任何时候、任意次数地调用它。</p>
+</div>
+
+<h2 id="components">组件、JSX 与 props</h2>
+
+<script type="text/plain" class="code" data-lang="tsx" data-title="src/components/BookmarkList.tsx">
+type Bookmark = { id: string; url: string; title: string; tags: string[] };
+
+// 组件 = 返回 JSX 的函数，名字首字母大写
+function BookmarkCard({ bookmark }: { bookmark: Bookmark }) {
+  return (
+    <li className="rounded border p-3">
+      <a href={bookmark.url}>{bookmark.title}</a>
+      <span className="text-sm text-zinc-500"> · {bookmark.tags.join(", ")}</span>
+    </li>
+  );
+}
+
+export function BookmarkList({ items }: { items: Bookmark[] }) {
+  if (items.length === 0) return <p>还没有收藏。</p>;   // 条件渲染就是普通的 if
+  return (
+    <ul className="space-y-2">
+      {items.map((b) => (
+        <BookmarkCard key={b.id} bookmark={b} />      // 列表渲染就是普通的 map
+      ))}
+    </ul>
+  );
+}
+</script>
+
+<ul>
+  <li><strong>JSX</strong> 看起来像 HTML，其实会被编译成普通函数调用（大致是 <code>jsx("li", { className: ..., children: ... })</code>），产出的是一个描述界面的普通 JS 对象。所以你可以在 <code>{}</code> 里写任意表达式，用 <code>if</code>、<code>map</code> 实现条件和循环，不需要模板语法。</li>
+  <li><strong>props</strong> 是父组件传给子组件的参数，对子组件来说是<strong>只读</strong>的。数据永远从上往下流。</li>
+  <li><strong><code>key</code></strong> 告诉 React 列表中“哪一项是哪一项”。必须稳定且唯一（用数据库 ID）。用数组下标作 key，在插入、删除、排序时会导致状态错位（例如输入框的内容跑到了另一行）。</li>
+</ul>
+
+<h2 id="state">State：为什么普通变量不行 <span class="badge deep">原理</span></h2>
+
+<script type="text/plain" class="code" data-lang="tsx">
+import { useState } from "react";
+
+function Counter() {
+  let plain = 0;                           // 每次渲染（每次函数调用）都会重置为 0
+  const [count, setCount] = useState(0);   // 由 React 保存，跨渲染保留
+
+  return (
+    <button onClick={() => { plain++; setCount(count + 1); }}>
+      plain: {plain} · count: {count}
+    </button>
+  );
+}
+</script>
+
+<p>点击后：<code>plain++</code> 改了当前这次调用里的局部变量，但它不会触发重新渲染；<code>setCount</code> 告诉 React“状态变了”，React 安排一次新的渲染，重新调用 <code>Counter()</code>。新的调用中，<code>plain</code> 又从 0 开始，而 <code>useState</code> 返回了 React 保存的新值 1。</p>
+
+<h3>每次渲染都是一张“快照”</h3>
+
+<p>这是最容易踩坑的一点，它是第 03 章“闭包”在 React 里的直接体现：</p>
+
+<script type="text/plain" class="code" data-lang="tsx">
+function Counter() {
+  const [count, setCount] = useState(0);
+  function addThree() {
+    setCount(count + 1);   // count 是本次渲染快照里的值：0 → 请求设为 1
+    setCount(count + 1);   // count 仍然是 0          → 请求设为 1
+    setCount(count + 1);   // 仍然是 0                → 请求设为 1
+  }                        // 结果：1，而不是 3
+  // 正确：函数式更新，基于“最新值”计算
+  function addThreeFixed() {
+    setCount((c) => c + 1);
+    setCount((c) => c + 1);
+    setCount((c) => c + 1); // 结果：3
+  }
+  return <button onClick={addThreeFixed}>{count}</button>;
+}
+</script>
+
+<p><code>setCount</code> 不会立刻修改 <code>count</code> 这个变量——它是一个 <code>const</code>，属于这次渲染的快照。新值只会出现在<em>下一次</em>渲染的快照里。</p>
+
+<h3>对象和数组：必须创建新的</h3>
+
+<p>回忆第 03 章：React 用引用比较判断状态是否改变。</p>
+
+<script type="text/plain" class="code" data-lang="tsx">
+// ✗ 修改原数组：引用没变，React 认为无变化
+items.push(newItem);
+setItems(items);
+
+// ✓ 创建新数组 / 新对象
+setItems([...items, newItem]);                                        // 添加
+setItems(items.filter((b) => b.id !== id));                           // 删除
+setItems(items.map((b) => (b.id === id ? { ...b, title } : b)));      // 修改一项
+</script>
+
+<h2 id="rerender">谁会重新渲染？ <span class="badge deep">原理</span></h2>
+
+<p>下面是 LinkNote 页面的组件树。点击按钮触发不同位置的状态变化，观察哪些组件函数被重新执行（右上角计数）：</p>
+
+<div data-widget="react-render"></div>
+
+<p>从演示中可以总结出三条规则：</p>
+<ol class="steps">
+  <li><strong>状态在哪个组件，重渲染就从哪里开始。</strong>它的父组件和兄弟组件不受影响。</li>
+  <li><strong>默认情况下，一个组件重渲染时，它渲染出的所有子组件都会重渲染</strong>，不论 props 是否改变。这通常没问题——重新执行函数很便宜，React 只会把真正的差异写入 DOM。</li>
+  <li><strong><code>memo</code> 可以让子组件在 props 未变时跳过渲染。</strong>React Compiler（2025 年 10 月发布 1.0）会在构建时自动做类似的记忆化，所以新项目里手写 <code>useMemo</code>、<code>useCallback</code>、<code>memo</code> 的需求已经大幅减少。</li>
+</ol>
+
+<h3>两个关键设计原则</h3>
+
+<p><strong>提升状态（lifting state up）：</strong>当两个组件需要共享同一份状态（比如 SearchBox 的输入要用来过滤 List），把状态移到它们最近的共同父组件，通过 props 分别传下去——一个传值，一个传修改函数。</p>
+
+<p><strong>能算出来的，就不要存（derived state）：</strong>这是 Agent 生成代码里最常见的冗余。</p>
+
+<script type="text/plain" class="code" data-lang="tsx">
+// ✗ 把“派生数据”也存成状态，再用 Effect 同步 —— 多一次渲染，还容易不一致
+const [query, setQuery] = useState("");
+const [filtered, setFiltered] = useState<Bookmark[]>([]);
+useEffect(() => {
+  setFiltered(items.filter((b) => b.title.includes(query)));
+}, [items, query]);
+
+// ✓ 直接在渲染时计算
+const [query2, setQuery2] = useState("");
+const filtered2 = items.filter((b) => b.title.includes(query2));
+</script>
+
+<h2 id="effects">Effect：与外部世界同步 <span class="badge deep">原理</span></h2>
+
+<p>组件函数必须是纯的，那需要订阅 WebSocket、操作浏览器 API、设置定时器时怎么办？这就是 <code>useEffect</code> 的用途：<strong>在渲染提交到屏幕之后，让组件与某个外部系统保持同步</strong>。</p>
+
+<script type="text/plain" class="code" data-lang="tsx">
+useEffect(() => {
+  const ws = new WebSocket(`wss://linknote.dev/live?room=${roomId}`);   // 建立同步
+  ws.onmessage = (e) => setMessages((m) => [...m, JSON.parse(e.data)]);
+  return () => ws.close();                                               // 清理：断开旧连接
+}, [roomId]);   // 依赖数组：只有 roomId 变了才重新同步
+</script>
+
+<p>执行规则：首次渲染后执行；之后每次渲染后，比较依赖数组中的每一项（用 <code>Object.is</code>，即引用比较），有变化才先执行上一次的清理函数，再执行新的 Effect。</p>
+
+<h3>死循环是怎么形成的</h3>
+
+<script type="text/plain" class="code" data-lang="tsx">
+function LinkList({ userId }: { userId: string }) {
+  const [links, setLinks] = useState<Bookmark[]>([]);
+  const options = { userId, limit: 20 };           // 每次渲染都是一个新对象
+
+  useEffect(() => {
+    fetch("/api/links?" + new URLSearchParams({ userId: options.userId }))
+      .then((r) => r.json())
+      .then(setLinks);                             // ② 设置状态 → 触发重渲染
+  }, [options]);                                   // ③ options 每次都是新引用 → Effect 再次执行
+}                                                   // → 回到 ②，无限循环
+</script>
+
+<p>模型：<em>渲染 → Effect 执行 → setState → 渲染 → 依赖“变了” → Effect 执行 → ……</em>。依赖数组里放了每次渲染都会新建的对象、数组或函数，是最常见的原因。</p>
+
+<div class="callout tip">
+  <span class="callout-title">开发模式下 Effect 会执行两次</span>
+  <p>在开发环境的 StrictMode 下，React 会故意“挂载 → 卸载 → 再挂载”一次组件，以暴露缺少清理函数的 Effect。看到请求发了两次，先别急着“修复”，这是有意为之，生产环境不会发生。</p>
+</div>
+
+<h3>你可能不需要 Effect</h3>
+
+<p>React 官方文档专门有一篇《You Might Not Need an Effect》。按场景对照：</p>
+
+<table>
+  <thead><tr><th>你想做的</th><th>不要</th><th>应该</th></tr></thead>
+  <tbody>
+    <tr><td>根据 props/state 计算新值</td><td>Effect + setState</td><td>渲染时直接计算</td></tr>
+    <tr><td>响应用户操作（提交、点击）</td><td>设一个标志位，让 Effect 监听它</td><td>在事件处理函数里直接做</td></tr>
+    <tr><td>从服务器获取数据</td><td>手写 Effect + fetch</td><td>框架的 loader / Server Component / TanStack Query</td></tr>
+    <tr><td>props 变化时重置状态</td><td>Effect 里 setState</td><td>给组件换一个 <code>key</code></td></tr>
+    <tr><td>订阅外部系统（WebSocket、浏览器事件）</td><td>—</td><td><strong>这才是 Effect 的正确用途</strong></td></tr>
+  </tbody>
+</table>
+
+<h2 id="data">数据获取：不要自己写 <span class="badge use">会用</span></h2>
+
+<p>手写 <code>useEffect + fetch</code> 看似简单，但你还需要处理：加载状态、错误状态、竞态（快速切换筛选条件时，旧请求比新请求晚返回，覆盖了新数据）、缓存、去重、重试、窗口重新聚焦时刷新……这些正是 <strong>TanStack Query</strong> 解决的问题：</p>
+
+<script type="text/plain" class="code" data-lang="tsx">
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+
+function LinkList({ tag }: { tag: string }) {
+  const { data, isPending, error } = useQuery({
+    queryKey: ["links", { tag }],               // 缓存键：tag 变了就是另一份缓存
+    queryFn: () => fetchLinks({ tag }),         // 竞态、去重、重试都由库处理
+  });
+  if (isPending) return <Skeleton />;
+  if (error) return <ErrorState retry />;
+  return <BookmarkList items={data} />;
+}
+
+function AddLinkButton() {
+  const qc = useQueryClient();
+  const add = useMutation({
+    mutationFn: createLink,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["links"] }), // 让相关缓存失效 → 自动重新获取
+  });
+  return <button onClick={() => add.mutate({ url: "https://react.dev" })}>保存</button>;
+}
+</script>
+
+<p>它背后的思想值得记住：<strong>服务器数据不是你的“状态”，而是远端数据的一份“缓存”</strong>。你关心的是“它什么时候过期、什么时候重新获取”，而不是“怎么把它存进 useState”。在使用全栈框架时，很多数据获取会改由服务器组件或路由 loader 完成（第 07 章），思想是一致的。</p>
+
+<h2 id="forms">表单与 React 19 Actions <span class="badge use">会用</span></h2>
+
+<p>React 19 让表单处理回归到 HTML 的原生方式：把一个函数传给 <code>&lt;form action&gt;</code>，React 负责处理提交、等待状态和错误。</p>
+
+<script type="text/plain" class="code" data-lang="tsx" data-title="LinkNote：添加链接表单">
+import { useActionState } from "react";
+
+type FormState = { error?: string; ok?: boolean };
+
+async function addLink(_prev: FormState, formData: FormData): Promise<FormState> {
+  const url = String(formData.get("url") ?? "");
+  const res = await fetch("/api/links", { method: "POST", body: JSON.stringify({ url }) });
+  return res.ok ? { ok: true } : { error: "保存失败，请检查网址" };
+}
+
+export function AddLinkForm() {
+  const [state, formAction, isPending] = useActionState(addLink, {});
+  return (
+    <form action={formAction}>
+      <label htmlFor="url">网址</label>
+      <input id="url" name="url" type="url" required />
+      <button type="submit" disabled={isPending}>{isPending ? "保存中…" : "保存"}</button>
+      {state.error && <p role="alert">{state.error}</p>}
+    </form>
+  );
+}
+</script>
+
+<p>相关的还有 <code>useOptimistic</code>（在服务器确认前先把结果显示出来，失败再回滚，即“乐观更新”）和 <code>useFormStatus</code>。在 Next.js 等框架中，这个 action 可以直接是一个运行在服务器上的函数（Server Action / Server Function，第 07、08 章）。</p>
+
+<p>两个术语：<strong>受控输入（controlled input）</strong>——输入框的值由 state 驱动，每次按键都 setState，适合需要实时校验或联动的场景；<strong>非受控输入（uncontrolled）</strong>——由浏览器保存值，提交时从 FormData 读取，更简单，适合大多数表单。</p>
+
+<h2 id="hooks">Hooks 规则与自定义 Hook</h2>
+
+<p>所有以 <code>use</code> 开头的函数都是 Hook。两条硬性规则：<strong>只在组件或自定义 Hook 的顶层调用</strong>（不能放在 if、循环、嵌套函数里）；<strong>只在 React 函数中调用</strong>。原因是 React 靠“调用顺序”来识别每个 Hook 对应哪份状态。Lint 规则 <code>react-hooks</code> 会自动检查。</p>
+
+<p>自定义 Hook 就是把一组 Hook 调用封装成函数，用来复用<em>逻辑</em>（不是复用状态本身——每个使用者都有自己的一份）：</p>
+
+<script type="text/plain" class="code" data-lang="tsx">
+function useDebounced<T>(value: T, ms = 300): T {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const id = setTimeout(() => setDebounced(value), ms);
+    return () => clearTimeout(id);          // 值再次变化时取消上一个定时器
+  }, [value, ms]);
+  return debounced;
+}
+// 用法：搜索框每次按键都更新 query，但只在停止输入 300ms 后才触发查询
+const debouncedQuery = useDebounced(query);
+</script>
+
+<h2 id="where-state">数据应该住在哪里？</h2>
+
+<p>“状态管理”是 React 生态里被讨论最多的话题。实际上，按下面的顺序问自己，大多数情况下根本不需要状态管理库：</p>
+
+<table>
+  <thead><tr><th>数据性质</th><th>住在哪里</th><th>LinkNote 例子</th></tr></thead>
+  <tbody>
+    <tr><td>只有一个组件用</td><td>组件内 <code>useState</code></td><td>下拉菜单是否展开</td></tr>
+    <tr><td>几个相邻组件共享</td><td>提升到共同父组件</td><td>搜索词与结果列表</td></tr>
+    <tr><td>应该能分享链接、刷新后保留</td><td><strong>URL 查询参数</strong></td><td>当前筛选的标签、页码</td></tr>
+    <tr><td>来自服务器</td><td><strong>服务器缓存</strong>（TanStack Query / 框架 loader）</td><td>收藏列表、用户信息</td></tr>
+    <tr><td>深层组件都要读，且很少变</td><td>Context</td><td>主题、当前登录用户</td></tr>
+    <tr><td>复杂的、跨页面的纯客户端状态</td><td>Zustand 等 store</td><td>离线草稿、复杂编辑器状态</td></tr>
+  </tbody>
+</table>
+
+<div class="callout tip">
+  <span class="callout-title">一个经验</span>
+  <p>很多人以为需要“全局状态”，其实他们需要的是<strong>服务器缓存</strong>（数据来自后端）或 <strong>URL 状态</strong>（筛选、分页、选中的标签页）。把这两类分出去后，剩下的客户端状态通常很少。</p>
+</div>
+
+<div class="callout project">
+  <span class="callout-title">LinkNote 中的落点</span>
+  <p>列表页：标签筛选放 URL（<code>?tag=react</code>）；收藏列表用服务器缓存；搜索框输入用局部状态 + 防抖；“添加链接”用表单 Action + 乐观更新；实时显示“摘要生成中”的进度用一个订阅 SSE 的 Effect（这是真正需要 Effect 的场景）。</p>
+</div>
+
+<div class="callout agent">
+  <span class="callout-title">对 Agent 怎么说</span>
+  <div class="compare">
+    <div class="head bad">模糊</div><div class="head good">精确</div>
+    <div class="bad">“列表页加个标签筛选。”</div>
+    <div class="good">“标签筛选状态放在 URL 查询参数 <code>tag</code> 里，刷新和分享链接后保留。过滤结果在渲染时计算，不要存成单独的 state，也不要用 useEffect 同步。收藏列表继续用现有的 useQuery，queryKey 加上 tag。”</div>
+    <div class="row-sep"></div>
+    <div class="bad">“页面一直重复请求，修一下。”</div>
+    <div class="good">“LinkList 的 useEffect 依赖了每次渲染都新建的 options 对象，导致请求死循环。把数据获取改为 TanStack Query，删除这个 Effect，并说明修改后的请求在什么条件下触发。”</div>
+  </div>
+  <p>本章词汇表：提升状态（lift state up）、派生状态（derived state）、受控 / 非受控输入、<code>key</code>、Effect 清理函数（cleanup）、依赖数组、服务器状态 vs 客户端状态、乐观更新、记忆化（memoization）。</p>
+</div>
+
+<div class="callout interview">
+  <span class="callout-title">面试角</span>
+  <ul>
+    <li><strong>什么会触发组件重新渲染？</strong>自身 state 变化、父组件重渲染、所消费的 Context 变化。props 变化本身不是独立原因——props 变化一定来自父组件的重渲染。</li>
+    <li><strong>为什么列表需要 key？为什么不能用 index？</strong>key 让 React 在比对时匹配新旧元素；用 index 时插入或排序会导致元素错配，局部状态和 DOM 被复用到错误的项上。</li>
+    <li><strong>useEffect 的依赖数组如何工作？</strong>每次渲染后用 Object.is 逐项比较；变化则先清理再执行。空数组 = 仅在挂载时执行一次。</li>
+    <li><strong>什么是虚拟 DOM？</strong>组件返回的 JSX 描述对象树；React 比对新旧两棵树，计算出最小的 DOM 操作。重点是“声明式 + 批量高效更新”，而不是“虚拟 DOM 一定比直接操作 DOM 快”。</li>
+  </ul>
+</div>
+
+<h2 id="check">自检</h2>
+
+<details class="check">
+  <summary>1. 父组件 <code>Page</code> 每秒更新一次时钟 state，它的子组件 <code>ExpensiveChart</code> 的 props 完全不变。没有 React Compiler、没有 memo 时，Chart 会每秒渲染吗？有什么更好的结构调整？</summary>
+  <div class="answer"><p>会，父组件重渲染会带着所有子组件重渲染。除了 memo，更好的做法是<strong>把时钟状态下移</strong>到一个独立的 <code>Clock</code> 组件里，让状态只影响真正需要它的部分——Chart 就不再是时钟状态所在组件的子组件了。</p></div>
+</details>
+
+<details class="check">
+  <summary>2. 下面代码想在用户切换 <code>linkId</code> 时清空评论输入框：<code>useEffect(() =&gt; setDraft(""), [linkId])</code>。有什么问题？更好的写法？</summary>
+  <div class="answer"><p>它会先用旧的 draft 渲染一次，Effect 执行后再渲染一次，出现闪烁，也多一次渲染。更好的写法是在父组件里给评论组件加 <code>key={linkId}</code>：key 变了，React 会把它当作一个全新的组件，状态自然重置。</p></div>
+</details>
+
+<details class="check">
+  <summary>3. 用户在搜索框快速输入 "r"、"re"、"rea"，每次都用 Effect 发请求。"re" 的响应最后才返回。界面会显示什么？怎么避免？</summary>
+  <div class="answer"><p>会显示 "re" 的结果，与输入框里的 "rea" 不一致——这是竞态。可以在 Effect 清理函数里标记旧请求已过期、或用 AbortController 取消旧请求；更好的做法是用 TanStack Query（按 queryKey 管理，只采用当前 key 的结果）并加防抖。</p></div>
+</details>
+
+</article></main>
+</body>
+</html>

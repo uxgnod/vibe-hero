@@ -1,0 +1,331 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Web 平台基础 · Vibe Hero</title>
+<meta name="description" content="从输入网址到页面可交互：HTTP、Cookie 与鉴权、同源策略与 CORS、缓存、DOM、CSS 布局、Tailwind 与 shadcn/ui。">
+<!-- seo -->
+<link rel="canonical" href="https://uxgnod.github.io/vibe-hero/zh/web.html">
+<link rel="alternate" hreflang="zh-CN" href="https://uxgnod.github.io/vibe-hero/zh/web.html">
+<link rel="alternate" hreflang="en" href="https://uxgnod.github.io/vibe-hero/en/web.html">
+<link rel="alternate" hreflang="x-default" href="https://uxgnod.github.io/vibe-hero/en/web.html">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Vibe Hero">
+<meta property="og:title" content="Web 平台基础 · Vibe Hero">
+<meta property="og:description" content="从输入网址到页面可交互：HTTP、Cookie 与鉴权、同源策略与 CORS、缓存、DOM、CSS 布局、Tailwind 与 shadcn/ui。">
+<meta property="og:url" content="https://uxgnod.github.io/vibe-hero/zh/web.html">
+<meta property="og:image" content="https://uxgnod.github.io/vibe-hero/assets/og-image.png">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:locale:alternate" content="en_US">
+<meta name="twitter:card" content="summary_large_image">
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "TechArticle", "headline": "Web 平台基础", "description": "从输入网址到页面可交互：HTTP、Cookie 与鉴权、同源策略与 CORS、缓存、DOM、CSS 布局、Tailwind 与 shadcn/ui。", "inLanguage": "zh-CN", "url": "https://uxgnod.github.io/vibe-hero/zh/web.html", "image": "https://uxgnod.github.io/vibe-hero/assets/og-image.png", "dateModified": "2026-09-26", "author": {"@type": "Person", "name": "uxgnod", "url": "https://github.com/uxgnod"}, "isPartOf": {"@type": "WebSite", "name": "Vibe Hero", "url": "https://uxgnod.github.io/vibe-hero/"}}</script>
+<link rel="icon" href="../assets/favicon.svg">
+<link rel="stylesheet" href="../assets/style.css">
+<script>try{var t=localStorage.getItem('vh-theme');if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+<script defer src="../assets/app.js"></script>
+<script defer src="../assets/widgets.js"></script>
+</head>
+<body>
+<main class="content"><article class="doc">
+
+<p class="eyebrow">CHAPTER 05 · 前端</p>
+<h1>Web 平台基础</h1>
+<p class="lead">后端工程师对 HTTP 并不陌生，但通常只站在服务器这一侧看它。本章换到浏览器那一侧：浏览器替你做了哪些事、强制执行哪些安全规则、怎么把 HTML 和 CSS 变成像素。这些规则不会因为你用了什么框架而改变。</p>
+<div class="meta"><span>⏱ 约 50 分钟</span><span class="badge deep">原理</span>（HTTP、Cookie、CORS）<span class="badge use">会用</span>（HTML、Tailwind）<span class="badge aware">知道</span>（CSS 细节）</div>
+
+<div class="goals">
+  <div class="goals-title">读完本章，你应该能够：</div>
+  <ul>
+    <li>按顺序讲出“从输入网址到页面可交互”的主要步骤。</li>
+    <li>解释为什么 curl 能成功的请求，在浏览器里会被 CORS 拦下，以及正确的修复方向。</li>
+    <li>说出登录凭证放在 HttpOnly Cookie 而不是 localStorage 里的理由。</li>
+    <li>读懂一段 Tailwind 代码，并用准确的词向 Agent 描述界面需求。</li>
+  </ul>
+</div>
+
+<h2 id="question">开场：curl 能通，浏览器不通</h2>
+
+<div class="callout question">
+  <span class="callout-title">开场问题</span>
+  <p>LinkNote 的前端部署在 <code>app.linknote.dev</code>，API 部署在 <code>api.linknote.dev</code>。你用 curl 调用 API，一切正常；前端页面里的 <code>fetch</code> 却在控制台报：<code>blocked by CORS policy</code>。Agent 建议你“在服务器上把 <code>Access-Control-Allow-Origin</code> 设成 <code>*</code>”。<strong>为什么 curl 和浏览器结果不同？Agent 的建议有什么问题？</strong></p>
+</div>
+
+<p><strong>答案方向：</strong>跨域限制不是服务器的规则，而是<strong>浏览器</strong>为了保护用户强制执行的规则。curl 不是浏览器，所以不受限制。浏览器之所以要拦，是因为它会自动带上用户的 Cookie——如果任意网站都能读取其他网站的响应，恶意网站就能以你的身份读取你的数据。设置 <code>*</code> 虽然能“消除报错”，但它<em>不允许</em>同时携带 Cookie，而且放开了所有来源。正确方向是：精确声明允许的来源，或者干脆让前端和 API 同源。</p>
+
+<p>要真正理解这一点，我们需要从一次完整的页面加载讲起。</p>
+
+<h2 id="journey">从输入网址到页面可交互</h2>
+
+<figure class="diagram">
+<div class="diagram-scroll">
+<svg viewBox="0 0 780 330" role="img" aria-label="页面加载全过程">
+  <defs><marker id="w1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="ar-fill"/></marker></defs>
+  <g font-size="12">
+    <text x="15" y="24" font-weight="700" font-size="13" class="t-accent">网络</text>
+    <rect x="15" y="34" width="110" height="46" rx="8" class="box-soft"/><text x="70" y="54" text-anchor="middle" font-weight="700">① DNS</text><text x="70" y="70" text-anchor="middle" font-size="10.5" class="t-mute">域名 → IP</text>
+    <rect x="140" y="34" width="120" height="46" rx="8" class="box-soft"/><text x="200" y="54" text-anchor="middle" font-weight="700">② TCP + TLS</text><text x="200" y="70" text-anchor="middle" font-size="10.5" class="t-mute">建立加密连接</text>
+    <rect x="275" y="34" width="130" height="46" rx="8" class="box-accent"/><text x="340" y="54" text-anchor="middle" font-weight="700">③ HTTP 请求</text><text x="340" y="70" text-anchor="middle" font-size="10.5" class="t-mute">GET / + Cookie</text>
+    <rect x="420" y="34" width="150" height="46" rx="8" class="box-purple"/><text x="495" y="54" text-anchor="middle" font-weight="700">④ 服务器 / CDN</text><text x="495" y="70" text-anchor="middle" font-size="10.5" class="t-mute">可能先经过 CDN 缓存</text>
+    <rect x="585" y="34" width="180" height="46" rx="8" class="box-accent"/><text x="675" y="54" text-anchor="middle" font-weight="700">⑤ 响应 HTML</text><text x="675" y="70" text-anchor="middle" font-size="10.5" class="t-mute">状态码 + 头 + 正文</text>
+    <line x1="125" y1="57" x2="138" y2="57" class="ln" marker-end="url(#w1)"/>
+    <line x1="260" y1="57" x2="273" y2="57" class="ln" marker-end="url(#w1)"/>
+    <line x1="405" y1="57" x2="418" y2="57" class="ln" marker-end="url(#w1)"/>
+    <line x1="570" y1="57" x2="583" y2="57" class="ln" marker-end="url(#w1)"/>
+
+    <text x="15" y="120" font-weight="700" font-size="13" class="t-use">浏览器</text>
+    <rect x="585" y="130" width="180" height="46" rx="8" class="box-use"/><text x="675" y="150" text-anchor="middle" font-weight="700">⑥ 解析 HTML → DOM</text><text x="675" y="166" text-anchor="middle" font-size="10.5" class="t-mute">遇到 CSS/JS 链接就去下载</text>
+    <rect x="390" y="130" width="180" height="46" rx="8" class="box-use"/><text x="480" y="150" text-anchor="middle" font-weight="700">⑦ CSS → CSSOM</text><text x="480" y="166" text-anchor="middle" font-size="10.5" class="t-mute">CSS 会阻塞渲染</text>
+    <rect x="195" y="130" width="180" height="46" rx="8" class="box-use"/><text x="285" y="150" text-anchor="middle" font-weight="700">⑧ 布局 + 绘制</text><text x="285" y="166" text-anchor="middle" font-size="10.5" class="t-mute">算位置 → 画像素（首次可见）</text>
+    <rect x="15" y="130" width="165" height="46" rx="8" class="box-ok"/><text x="97" y="150" text-anchor="middle" font-weight="700">⑨ 执行 JS</text><text x="97" y="166" text-anchor="middle" font-size="10.5" class="t-mute">绑定事件 → 可交互</text>
+    <line x1="675" y1="82" x2="675" y2="128" class="ln" marker-end="url(#w1)"/>
+    <line x1="585" y1="153" x2="572" y2="153" class="ln" marker-end="url(#w1)"/>
+    <line x1="390" y1="153" x2="377" y2="153" class="ln" marker-end="url(#w1)"/>
+    <line x1="195" y1="153" x2="182" y2="153" class="ln" marker-end="url(#w1)"/>
+
+    <text x="15" y="220" font-weight="700" font-size="13" class="t-purple">之后</text>
+    <rect x="15" y="230" width="360" height="80" rx="8" class="box"/>
+    <text x="30" y="254" font-weight="700">⑩ 用户操作 → JS 发 fetch → 更新 DOM</text>
+    <text x="30" y="276" font-size="11.5" class="t-soft">不再整页刷新。这就是“单页应用（SPA）”的交互方式，</text>
+    <text x="30" y="294" font-size="11.5" class="t-soft">React 负责把“数据变化”转换成“DOM 变化”（第 06 章）。</text>
+    <rect x="395" y="230" width="370" height="80" rx="8" class="box"/>
+    <text x="410" y="254" font-weight="700">渲染模式决定 ⑤ 里有什么</text>
+    <text x="410" y="276" font-size="11.5" class="t-soft">客户端渲染：⑤ 是空壳，⑨ 之后才有内容；</text>
+    <text x="410" y="294" font-size="11.5" class="t-soft">服务端渲染：⑤ 已含完整内容，⑧ 时就可见（第 07 章）。</text>
+  </g>
+</svg>
+</div>
+<figcaption>页面加载主干流程（简化：省略了 HTTP/2 多路复用、预加载、缓存命中等细节）。</figcaption>
+</figure>
+
+<p>这张图后面会被反复用到：第 07 章讨论“为什么服务端渲染首屏更快”，本质上就是在讨论 ⑤ 里装了什么、⑨ 需要多少 JS。</p>
+
+<h2 id="http">HTTP：你需要熟练掌握的部分 <span class="badge deep">原理</span></h2>
+
+<p>作为后端开发者，你应该熟悉请求方法和状态码。这里只强调在全栈开发中特别重要的几点：</p>
+
+<table>
+  <thead><tr><th>状态码</th><th>含义</th><th>全栈开发中的典型场景</th></tr></thead>
+  <tbody>
+    <tr><td><code>200 / 201 / 204</code></td><td>成功 / 已创建 / 无内容</td><td>正常请求；创建收藏；删除成功</td></tr>
+    <tr><td><code>301 / 302 / 307 / 308</code></td><td>重定向</td><td>登录后跳转；307/308 保留请求方法</td></tr>
+    <tr><td><code>304</code></td><td>未修改（用缓存）</td><td>ETag 协商缓存命中</td></tr>
+    <tr><td><code>400 / 422</code></td><td>请求格式错 / 校验不通过</td><td>Zod 校验失败时返回，附带字段错误</td></tr>
+    <tr><td><code>401 / 403</code></td><td>未认证（你是谁？）/ 无权限（我知道你是谁，但不行）</td><td>两者经常被混用，要分清</td></tr>
+    <tr><td><code>404 / 409</code></td><td>不存在 / 冲突</td><td>重复收藏同一个 URL 可返回 409</td></tr>
+    <tr><td><code>429</code></td><td>请求过多</td><td>限流；调用 LLM API 时你会经常收到</td></tr>
+    <tr><td><code>500 / 502 / 503 / 504</code></td><td>服务器错误 / 网关错误 / 不可用 / 网关超时</td><td>504 常见于 serverless 函数超时</td></tr>
+  </tbody>
+</table>
+
+<p>还有一点：HTTP 是<strong>无状态</strong>的。服务器不会“记得”上一个请求是谁发的。所谓“登录状态”，是每个请求都带上某种凭证实现的，而浏览器里最常见的凭证载体就是 Cookie。</p>
+
+<h2 id="cookies">Cookie 与登录：浏览器会“自动”做的事 <span class="badge deep">原理</span></h2>
+
+<p>Cookie 的关键特性是：<strong>浏览器会自动把它附加到发往对应域名的请求上</strong>，不需要你的 JS 做任何事。这既是它方便的原因，也是一整类安全问题的根源。</p>
+
+<script type="text/plain" class="code" data-lang="text" data-title="服务器登录成功后返回的响应头">
+Set-Cookie: session=8f3a…c21; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=2592000
+</script>
+
+<table>
+  <thead><tr><th>属性</th><th>作用</th><th>不设置的后果</th></tr></thead>
+  <tbody>
+    <tr><td><code>HttpOnly</code></td><td>JS 无法读取（<code>document.cookie</code> 看不到）</td><td>一旦页面被注入恶意脚本（XSS），会话凭证直接被偷走</td></tr>
+    <tr><td><code>Secure</code></td><td>只通过 HTTPS 发送</td><td>在不安全网络中可能被窃听</td></tr>
+    <tr><td><code>SameSite=Lax</code></td><td>从其他站点发起的请求（除顶层链接跳转外）不带这个 Cookie</td><td>跨站请求伪造（CSRF）：恶意网站诱导你的浏览器带着 Cookie 调用你的接口</td></tr>
+    <tr><td><code>Max-Age</code> / <code>Expires</code></td><td>过期时间</td><td>浏览器关闭即失效（会话 Cookie）</td></tr>
+  </tbody>
+</table>
+
+<div class="callout tip">
+  <span class="callout-title">令牌放哪里：Cookie 还是 localStorage？</span>
+  <p>很多教程（和 Agent）会把 JWT 存在 localStorage，再手动加到请求头里。问题在于：localStorage 能被页面上的任何 JS 读取，一次 XSS 就能把令牌偷走。对于你自己的网站，<strong>更安全的默认做法是把会话凭证放进 HttpOnly + Secure + SameSite 的 Cookie</strong>。主流鉴权库（Better Auth、Auth.js、Clerk 等）默认就这样做。localStorage 适合存非敏感的界面偏好。</p>
+</div>
+
+<h2 id="cors">同源策略与 CORS <span class="badge deep">原理</span></h2>
+
+<p><strong>源（origin）</strong> = 协议 + 域名 + 端口。<code>https://app.linknote.dev</code> 和 <code>https://api.linknote.dev</code> 是不同的源；<code>http://localhost:5173</code> 和 <code>http://localhost:8787</code> 也是不同的源。</p>
+
+<p><strong>同源策略（same-origin policy）</strong>：浏览器默认不允许一个源的 JS 读取另一个源的响应。<strong>CORS（跨源资源共享）</strong>是服务器“主动豁免”的机制：服务器在响应头里声明“我允许哪些源读取我”。</p>
+
+<figure class="diagram">
+<div class="diagram-scroll">
+<svg viewBox="0 0 780 250" role="img" aria-label="CORS 预检请求流程">
+  <defs><marker id="w2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="ar-accent"/></marker>
+  <marker id="w3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="ar-ok"/></marker></defs>
+  <rect x="20" y="20" width="200" height="210" rx="10" class="box-use"/>
+  <text x="120" y="46" text-anchor="middle" font-weight="700" font-size="13.5">浏览器</text>
+  <text x="120" y="66" text-anchor="middle" font-size="11" class="t-mute">页面源：app.linknote.dev</text>
+  <rect x="560" y="20" width="200" height="210" rx="10" class="box-purple"/>
+  <text x="660" y="46" text-anchor="middle" font-weight="700" font-size="13.5">API 服务器</text>
+  <text x="660" y="66" text-anchor="middle" font-size="11" class="t-mute">api.linknote.dev</text>
+  <g font-size="11.5">
+    <line x1="222" y1="92" x2="556" y2="92" class="ln-accent" marker-end="url(#w2)"/>
+    <text x="390" y="86" text-anchor="middle" class="t-mono">① OPTIONS /links（预检）Origin: https://app.linknote.dev</text>
+    <line x1="556" y1="130" x2="222" y2="130" class="ln-ok" marker-end="url(#w3)"/>
+    <text x="390" y="122" text-anchor="middle" class="t-mono">② Access-Control-Allow-Origin: https://app.linknote.dev</text>
+    <text x="390" y="146" text-anchor="middle" class="t-mono t-mute">Access-Control-Allow-Credentials: true</text>
+    <line x1="222" y1="180" x2="556" y2="180" class="ln-accent" marker-end="url(#w2)"/>
+    <text x="390" y="174" text-anchor="middle" class="t-mono">③ POST /links（真正的请求，带 Cookie）</text>
+    <line x1="556" y1="212" x2="222" y2="212" class="ln-ok" marker-end="url(#w3)"/>
+    <text x="390" y="206" text-anchor="middle" class="t-mono">④ 201 + 同样的 CORS 头 → JS 才能读到响应</text>
+  </g>
+</svg>
+</div>
+<figcaption>非简单请求（如带 JSON 请求体的 POST）会先发一次预检。服务器的回答决定浏览器是否放行。</figcaption>
+</figure>
+
+<p>回到开场问题中 Agent 的建议：</p>
+<ul>
+  <li><code>Access-Control-Allow-Origin: *</code> 不能和 <code>Allow-Credentials: true</code> 同时使用。需要带 Cookie 时，浏览器会直接拒绝，问题并没有真正解决。</li>
+  <li>即使不带 Cookie，<code>*</code> 也意味着任何网站都能调用你的 API 并读取结果。对公开数据可以接受，对用户数据不行。</li>
+</ul>
+
+<p><strong>更好的方案往往是避免跨域</strong>：让前端和 API 同源。全栈框架（Next.js、TanStack Start）天然如此——页面和 API 路由由同一个服务提供；或者在同一个域名下用路径区分（<code>/api/*</code> 由后端处理）。开发环境里可以用开发服务器的代理（proxy）功能。</p>
+
+<h2 id="caching">缓存：让同样的东西只传一次 <span class="badge use">会用</span></h2>
+
+<p>浏览器、CDN、服务器都可能缓存响应。控制它们的主要是 <code>Cache-Control</code> 响应头。现代前端的标准策略是“两类文件，两种策略”：</p>
+
+<table>
+  <thead><tr><th>资源</th><th>文件名</th><th>缓存策略</th><th>原因</th></tr></thead>
+  <tbody>
+    <tr><td>JS / CSS / 图片</td><td><code>app.3f9a1c.js</code>（带内容哈希）</td><td><code>public, max-age=31536000, immutable</code></td><td>内容变了文件名就变，旧文件可以永久缓存</td></tr>
+    <tr><td>HTML</td><td><code>index.html</code></td><td><code>no-cache</code>（每次向服务器确认）</td><td>HTML 引用了最新的哈希文件名，必须是最新的</td></tr>
+    <tr><td>API 响应</td><td>—</td><td>视数据而定，用户私有数据用 <code>private</code> 或不缓存</td><td>避免 CDN 把 A 用户的数据给了 B 用户</td></tr>
+  </tbody>
+</table>
+
+<p>打包器会自动给资源加哈希，部署平台也会设置合理的默认值。你需要知道这套机制，是为了排查“部署了但用户看到的还是旧版本”以及“CDN 缓存了不该缓存的东西”这两类问题。</p>
+
+<h2 id="dom">DOM：浏览器里的界面数据结构</h2>
+
+<p>浏览器把 HTML 解析成一棵对象树，叫 <strong>DOM（文档对象模型）</strong>。JS 可以读写这棵树，浏览器会把变化反映到屏幕上。</p>
+
+<script type="text/plain" class="code" data-lang="ts" data-title="不用框架，直接操作 DOM">
+const list = document.querySelector("#links")!;
+const button = document.querySelector("#add")!;
+
+button.addEventListener("click", () => {
+  const li = document.createElement("li");
+  li.textContent = "https://react.dev";
+  list.appendChild(li);        // 命令式：自己找到位置，自己修改
+});
+</script>
+
+<p>这是<strong>命令式（imperative）</strong>的写法：你告诉浏览器每一步怎么改。页面简单时没问题；当同一份数据要显示在五个地方、还要处理加载中、出错、空列表等状态时，手动同步 DOM 会迅速失控。这正是 React 这类库要解决的问题——你描述“界面应该是什么样”，它来算出“DOM 该怎么改”。</p>
+
+<p>日常开发中你基本不会直接操作 DOM，但要知道：DOM 事件会<strong>冒泡（bubbling）</strong>（点击子元素，父元素的监听器也会收到），表单默认会提交并刷新页面（所以常见 <code>e.preventDefault()</code>）。<span class="badge aware">知道</span></p>
+
+<h2 id="html">HTML：选对标签比你想的重要 <span class="badge use">会用</span></h2>
+
+<p>Agent 生成的代码里常见一个问题：用 <code>&lt;div onClick&gt;</code> 做按钮。它“能用”，但键盘无法聚焦、屏幕阅读器不知道它是按钮、在表单里也不会触发提交。语义化 HTML 免费提供了这些能力：</p>
+
+<table>
+  <thead><tr><th>需求</th><th>用</th><th>不要用</th></tr></thead>
+  <tbody>
+    <tr><td>点击执行操作</td><td><code>&lt;button type="button"&gt;</code></td><td><code>&lt;div onClick&gt;</code></td></tr>
+    <tr><td>跳转到另一个页面</td><td><code>&lt;a href&gt;</code>（或框架的 <code>&lt;Link&gt;</code>）</td><td><code>&lt;button onClick={navigate}&gt;</code></td></tr>
+    <tr><td>收集输入并提交</td><td><code>&lt;form&gt;</code> + <code>&lt;label&gt;</code> + <code>&lt;input&gt;</code></td><td>散落的 input + 按钮点击读取值</td></tr>
+    <tr><td>页面结构</td><td><code>&lt;header&gt; &lt;nav&gt; &lt;main&gt; &lt;article&gt;</code></td><td>全部 <code>&lt;div&gt;</code></td></tr>
+  </tbody>
+</table>
+
+<p>这些细节属于“可访问性（accessibility，常缩写为 a11y）”。你不需要成为专家，但要在验收标准里写上“可以只用键盘完成主要操作”。</p>
+
+<h2 id="css">CSS：读懂布局就够了 <span class="badge aware">知道</span></h2>
+
+<p>CSS 是一个庞大的领域。对于转型中的全栈开发者，建议只掌握这几个概念，其余交给 Agent 和组件库：</p>
+<ul>
+  <li><strong>盒模型</strong>：每个元素都是一个盒子，由内容、内边距（padding）、边框（border）、外边距（margin）组成。</li>
+  <li><strong>Flexbox</strong>：一维排列（一行或一列），处理对齐和分配剩余空间。导航栏、按钮组、卡片内部布局。</li>
+  <li><strong>Grid</strong>：二维网格。卡片列表、整体页面布局。</li>
+  <li><strong>响应式</strong>：用媒体查询（media query）按屏幕宽度切换布局。通常采用“移动优先”：先写窄屏样式，再为宽屏添加规则。</li>
+</ul>
+
+<h2 id="tailwind">Tailwind CSS 与 shadcn/ui <span class="badge use">会用</span></h2>
+
+<p><strong>Tailwind</strong> 是 2026 年 Agent 生成 UI 的默认选择。它不让你写 CSS 文件，而是提供大量“工具类（utility class）”，每个类对应一条样式规则，直接写在元素上：</p>
+
+<script type="text/plain" class="code" data-lang="tsx" data-title="LinkNote 的收藏卡片">
+<article className="rounded-xl border bg-white p-4 shadow-sm hover:shadow-md dark:bg-zinc-900">
+  <h3 className="truncate text-base font-semibold">{title}</h3>
+  <p className="mt-1 line-clamp-2 text-sm text-zinc-600">{summary}</p>
+  <div className="mt-3 flex flex-wrap gap-2">
+    {tags.map((t) => (
+      <span key={t} className="rounded-full bg-blue-50 px-2 py-0.5 text-xs text-blue-700">{t}</span>
+    ))}
+  </div>
+</article>
+</script>
+
+<p>读法：<code>p-4</code> = 内边距 1rem；<code>mt-1</code> = 上外边距；<code>flex flex-wrap gap-2</code> = 弹性布局、可换行、间距；<code>hover:</code>、<code>dark:</code>、<code>md:</code> 这样的前缀表示“在某种状态或屏幕尺寸下才生效”。</p>
+
+<p>它为什么适合 AI 时代？样式和结构写在一起，Agent 修改一个组件时不需要跨文件找 CSS；类名是有限的、标准化的词汇，模型非常熟悉；不需要给 CSS 类起名字。代价是类名很长，但这在 Agent 生成代码的场景里问题不大。</p>
+
+<div class="callout warn">
+  <span class="callout-title">Tailwind v4 的变化</span>
+  <p>v4 把配置从 <code>tailwind.config.js</code> 移到了 CSS 文件里（<code>@import "tailwindcss";</code> 加 <code>@theme { ... }</code> 定义设计变量）。模型常常按 v3 的方式生成配置文件。看到 Agent 创建 <code>tailwind.config.js</code> 时，先确认项目用的是哪个版本。</p>
+</div>
+
+<p><strong>shadcn/ui</strong> 不是一个传统的组件库依赖。它是一套组件的<em>源代码</em>，用命令行工具复制到你的项目里（<code>pnpm dlx shadcn@latest add button dialog</code>），之后你可以随意修改。组件底层基于无样式的可访问性原语库（如 Radix UI），样式用 Tailwind。它成为主流的原因和 Tailwind 类似：代码就在你的仓库里，Agent 可以直接读和改。</p>
+
+<h2 id="web-apis">值得知道的浏览器 API <span class="badge aware">知道</span></h2>
+
+<table>
+  <thead><tr><th>API</th><th>用途</th></tr></thead>
+  <tbody>
+    <tr><td><code>fetch</code></td><td>发 HTTP 请求（服务器端运行时也有）</td></tr>
+    <tr><td><code>URL</code> / <code>URLSearchParams</code></td><td>解析和构造网址、查询参数。不要手动拼字符串</td></tr>
+    <tr><td><code>FormData</code></td><td>读取表单数据；React 的表单 Action 直接接收它</td></tr>
+    <tr><td><code>localStorage</code> / <code>IndexedDB</code></td><td>浏览器本地存储：简单键值 / 结构化大量数据</td></tr>
+    <tr><td><code>EventSource</code>（SSE）</td><td>服务器单向推送；LLM 流式输出常用</td></tr>
+    <tr><td><code>WebSocket</code></td><td>双向实时通信：聊天、协作</td></tr>
+    <tr><td>Web Worker</td><td>在后台线程跑计算，避免阻塞主线程</td></tr>
+  </tbody>
+</table>
+
+<div class="callout agent">
+  <span class="callout-title">对 Agent 怎么说：描述界面的词汇</span>
+  <p>界面需求最容易说得含糊。下面这些词能让描述变得精确：</p>
+  <div class="compare">
+    <div class="head bad">模糊</div><div class="head good">精确</div>
+    <div class="bad">“做个好看的列表页。”</div>
+    <div class="good">“收藏列表页：移动端单列，≥768px 两列网格，≥1280px 三列。每张卡片显示标题（单行截断）、摘要（最多两行）、标签（胶囊样式）。需要四种状态：加载中用骨架屏（skeleton）、空状态带引导按钮、错误状态带重试、正常列表。使用 shadcn/ui 的 Card 组件。”</div>
+    <div class="row-sep"></div>
+    <div class="bad">“接口跨域了，修一下。”</div>
+    <div class="good">“前端 app.linknote.dev 调用 api.linknote.dev 需要带会话 Cookie。在 API 上只允许这个来源，开启 credentials，并处理 OPTIONS 预检。不要使用通配符 *。或者评估：改成同源的 /api 路径是否更简单？”</div>
+  </div>
+  <p>常用词汇：响应式断点（breakpoint）、骨架屏、空状态（empty state）、加载 / 错误状态、乐观更新（optimistic update）、防抖（debounce）、无限滚动 / 分页、模态框（modal / dialog）、抽屉（drawer / sheet）、提示（toast）、焦点管理、键盘可达。</p>
+</div>
+
+<div class="callout interview">
+  <span class="callout-title">面试角</span>
+  <ul>
+    <li><strong>从输入 URL 到页面显示发生了什么？</strong>按网络 → 服务器 → 解析 → 渲染 → 执行 JS 的主干讲，再挑一个你熟悉的环节深入（如 TLS 握手、CDN 缓存、关键渲染路径）。</li>
+    <li><strong>什么是 CORS？为什么会有预检？</strong>先说同源策略保护的是用户（浏览器自动带凭证），再说 CORS 是服务器声明的豁免；带自定义头或 JSON 体的请求在发送前需要预检确认。</li>
+    <li><strong>XSS 和 CSRF 分别是什么？怎么防？</strong>XSS：注入脚本在你的页面上执行 → 转义输出（React 默认会转义）、CSP、HttpOnly Cookie。CSRF：别的网站借你的 Cookie 发请求 → SameSite Cookie、CSRF token、校验 Origin。</li>
+  </ul>
+</div>
+
+<h2 id="check">自检</h2>
+
+<details class="check">
+  <summary>1. 开发时，前端跑在 <code>localhost:5173</code>，API 跑在 <code>localhost:8787</code>。它们同源吗？如果不同源，最省事的解决办法是什么？</summary>
+  <div class="answer"><p>不同源（端口不同）。最省事的办法是在 Vite 开发服务器里配置代理：浏览器请求 <code>localhost:5173/api/*</code>，由开发服务器转发到 8787。对浏览器来说这是同源请求。生产环境则通过同域部署或正确的 CORS 配置解决。</p></div>
+</details>
+
+<details class="check">
+  <summary>2. 你发布了新版本，部分用户反馈“页面白屏”，控制台显示某个 <code>app.3f9a1c.js</code> 404。可能是什么原因？</summary>
+  <div class="answer"><p>用户浏览器（或 CDN）缓存了<em>旧的</em> HTML，它引用了旧的哈希文件名，而新部署删除了旧文件。检查 HTML 是否被错误地设置了长缓存，以及部署平台是否保留了旧版本资源。</p></div>
+</details>
+
+<details class="check">
+  <summary>3. 一个 Cookie 设置了 <code>HttpOnly</code>，但没设 <code>SameSite</code>（且浏览器按旧规则处理）。它能防住 XSS 偷令牌吗？能防住 CSRF 吗？</summary>
+  <div class="answer"><p>能防止 XSS 脚本<em>读取</em>令牌（但注入的脚本仍然可以在页面上以用户身份发请求）。不能防 CSRF：Cookie 仍会随着其他网站发起的请求被自动发送。现代浏览器对未设置 SameSite 的 Cookie 默认按 Lax 处理，但不应依赖默认值，应显式设置。</p></div>
+</details>
+
+</article></main>
+</body>
+</html>

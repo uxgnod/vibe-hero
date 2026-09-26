@@ -1,0 +1,376 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The JavaScript Runtime Model · Vibe Hero</title>
+<meta name="description" content="Single thread, the event loop, Promises, async/await, closures, references and modules: the parts of JavaScript you must understand deeply.">
+<!-- seo -->
+<link rel="canonical" href="https://uxgnod.github.io/vibe-hero/en/javascript.html">
+<link rel="alternate" hreflang="zh-CN" href="https://uxgnod.github.io/vibe-hero/zh/javascript.html">
+<link rel="alternate" hreflang="en" href="https://uxgnod.github.io/vibe-hero/en/javascript.html">
+<link rel="alternate" hreflang="x-default" href="https://uxgnod.github.io/vibe-hero/en/javascript.html">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Vibe Hero">
+<meta property="og:title" content="The JavaScript Runtime Model · Vibe Hero">
+<meta property="og:description" content="Single thread, the event loop, Promises, async/await, closures, references and modules: the parts of JavaScript you must understand deeply.">
+<meta property="og:url" content="https://uxgnod.github.io/vibe-hero/en/javascript.html">
+<meta property="og:image" content="https://uxgnod.github.io/vibe-hero/assets/og-image.png">
+<meta property="og:locale" content="en_US">
+<meta property="og:locale:alternate" content="zh_CN">
+<meta name="twitter:card" content="summary_large_image">
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "TechArticle", "headline": "The JavaScript Runtime Model", "description": "Single thread, the event loop, Promises, async/await, closures, references and modules: the parts of JavaScript you must understand deeply.", "inLanguage": "en", "url": "https://uxgnod.github.io/vibe-hero/en/javascript.html", "image": "https://uxgnod.github.io/vibe-hero/assets/og-image.png", "dateModified": "2026-09-26", "author": {"@type": "Person", "name": "uxgnod", "url": "https://github.com/uxgnod"}, "isPartOf": {"@type": "WebSite", "name": "Vibe Hero", "url": "https://uxgnod.github.io/vibe-hero/"}}</script>
+<link rel="icon" href="../assets/favicon.svg">
+<link rel="stylesheet" href="../assets/style.css">
+<script>try{var t=localStorage.getItem('vh-theme');if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+<script defer src="../assets/app.js"></script>
+<script defer src="../assets/widgets.js"></script>
+</head>
+<body>
+<main class="content"><article class="doc">
+
+<p class="eyebrow">CHAPTER 03 · LANGUAGE</p>
+<h1>The JavaScript Runtime Model</h1>
+<p class="lead">TypeScript only adds types to JavaScript; <em>how the program runs</em> is decided entirely by JavaScript's runtime rules. This is one of the most important "Deep" chapters: async ordering, concurrency, closures, references — most of the subtle bugs agents write hide here.</p>
+<div class="meta"><span>⏱ ~60 min</span><span class="badge deep">Deep</span><span>The syntax cheat sheet is <span class="badge use">Use</span></span></div>
+
+<div class="goals">
+  <div class="goals-title">By the end of this chapter you should be able to:</div>
+  <ul>
+    <li>Predict the output order of code mixing <code>setTimeout</code>, <code>Promise</code> and <code>await</code>, and explain why.</li>
+    <li>Explain how Node serves thousands of concurrent requests with one thread — and what code "freezes everyone".</li>
+    <li>Recognize and fix three common async bugs: <code>forEach(async)</code>, a missing <code>await</code>, needless serialization.</li>
+    <li>Explain closures and reference equality, setting up Chapter 06 on React.</li>
+  </ul>
+</div>
+
+<h2 id="question">Opening: one thread, a thousand requests</h2>
+
+<div class="callout question">
+  <span class="callout-title">Opening question</span>
+  <p>Traditional Java web servers give each request a thread; Go gives each request a goroutine. Node.js executes your JavaScript on <strong>a single thread</strong>. <strong>How can it serve thousands of requests at once? And why can one CPU-heavy <code>for</code> loop freeze every user simultaneously?</strong></p>
+</div>
+
+<p><strong>Where the answer lies:</strong> web servers spend most of their time <em>waiting</em> — for the database, the network, the disk. JavaScript's approach: <strong>waiting doesn't occupy the thread</strong>. Start the I/O, immediately go do something else, and queue up the continuation when the result arrives. But <strong>computation does occupy the thread</strong>: while it computes, everyone in the queue waits. Understand those two sentences and you understand half this chapter.</p>
+
+<h2 id="single-thread">One thread + non-blocking I/O</h2>
+
+<figure class="diagram">
+<div class="diagram-scroll">
+<svg viewBox="0 0 780 290" role="img" aria-label="Thread-pool model vs event-loop model">
+  <defs><marker id="j1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="ar-fill"/></marker></defs>
+  <text x="190" y="22" text-anchor="middle" font-weight="700" font-size="14">Thread pool (classic Java)</text>
+  <text x="590" y="22" text-anchor="middle" font-weight="700" font-size="14">Event loop (Node / browser)</text>
+  <g font-size="11.5">
+    <text x="20" y="55">thread 1</text><rect x="75" y="42" width="40" height="18" rx="3" class="box-accent"/><rect x="115" y="42" width="165" height="18" rx="3" class="box-soft"/><rect x="280" y="42" width="40" height="18" rx="3" class="box-accent"/>
+    <text x="20" y="85">thread 2</text><rect x="95" y="72" width="40" height="18" rx="3" class="box-accent"/><rect x="135" y="72" width="145" height="18" rx="3" class="box-soft"/><rect x="280" y="72" width="40" height="18" rx="3" class="box-accent"/>
+    <text x="20" y="115">thread 3</text><rect x="115" y="102" width="40" height="18" rx="3" class="box-accent"/><rect x="155" y="102" width="155" height="18" rx="3" class="box-soft"/><rect x="310" y="102" width="30" height="18" rx="3" class="box-accent"/>
+    <text x="20" y="145">…</text><text x="75" y="145" class="t-mute">1000 requests ≈ 1000 threads (mostly waiting)</text>
+    <text x="200" y="180" text-anchor="middle" class="t-soft">each thread has its own stack (MBs of memory)</text>
+    <text x="200" y="198" text-anchor="middle" class="t-soft">while waiting, the thread is held but idle</text>
+    <rect x="70" y="225" width="20" height="12" rx="2" class="box-accent"/><text x="96" y="235">running code</text>
+    <rect x="190" y="225" width="20" height="12" rx="2" class="box-soft"/><text x="216" y="235">waiting on I/O (idle)</text>
+
+    <text x="420" y="55">main</text>
+    <rect x="470" y="42" width="30" height="18" rx="3" class="box-accent"/><text x="485" y="55" text-anchor="middle" font-size="10">A1</text>
+    <rect x="500" y="42" width="30" height="18" rx="3" class="box-purple"/><text x="515" y="55" text-anchor="middle" font-size="10">B1</text>
+    <rect x="530" y="42" width="30" height="18" rx="3" class="box-use"/><text x="545" y="55" text-anchor="middle" font-size="10">C1</text>
+    <rect x="590" y="42" width="30" height="18" rx="3" class="box-accent"/><text x="605" y="55" text-anchor="middle" font-size="10">A2</text>
+    <rect x="620" y="42" width="30" height="18" rx="3" class="box-use"/><text x="635" y="55" text-anchor="middle" font-size="10">C2</text>
+    <rect x="680" y="42" width="30" height="18" rx="3" class="box-purple"/><text x="695" y="55" text-anchor="middle" font-size="10">B2</text>
+    <text x="420" y="104">system</text>
+    <rect x="470" y="88" width="290" height="24" rx="4" class="box-soft"/>
+    <text x="615" y="104" text-anchor="middle" class="t-soft">OS / libuv wait on all I/O concurrently</text>
+    <path d="M485 62 L485 86" class="ln ln-dash"/><path d="M605 86 L605 62" class="ln ln-dash" marker-end="url(#j1)"/>
+    <text x="590" y="150" text-anchor="middle" class="t-soft">Request A's first half (A1) starts a DB query and yields at once;</text>
+    <text x="590" y="168" text-anchor="middle" class="t-soft">when the result returns, A's second half (A2) is queued</text>
+    <text x="590" y="198" text-anchor="middle" class="t-deep">But if B1 is a loop that runs for 2 seconds,</text>
+    <text x="590" y="216" text-anchor="middle" class="t-deep">A2, C2 and every new request wait 2 seconds</text>
+  </g>
+</svg>
+</div>
+<figcaption>Left: each request owns a thread that idles while waiting. Right: one thread takes turns running each request's "non-waiting slices"; the waiting is done concurrently by the system layer.</figcaption>
+</figure>
+
+<div class="callout analogy">
+  <span class="callout-title">Analogy: a restaurant with one waiter</span>
+  <p>The thread-pool model gives every table its own waiter, who takes the order and then stands at the kitchen door waiting for the food. The event-loop model has a single waiter: take table A's order, hand the ticket to the kitchen (system-level I/O), immediately go take table B's order; when the kitchen shouts "table A is ready", note it on the to-do queue and serve it once the current task is done.</p>
+  <p><strong>Where the analogy breaks:</strong> if that single waiter starts <em>cooking</em> (CPU-heavy work), the whole restaurant stops — exactly why one big loop blocks every request. And in reality the "kitchen" is finite too: when the DB connection pool is full, you queue anyway.</p>
+</div>
+
+<p>What this means for you:</p>
+<ul>
+  <li><strong>I/O-bound</strong> services (querying DBs, calling APIs, calling LLMs) run very efficiently on Node — and that's the shape of most web and AI apps.</li>
+  <li><strong>CPU-bound</strong> work (image processing, parsing huge JSON, heavy computation) should be chunked, moved to a worker thread, or handed to a dedicated service or queue. On Cloudflare Workers, CPU time also has an explicit limit.</li>
+  <li>Same in the browser: the main thread also renders the page and responds to clicks. Compute too long in JS and the page "freezes".</li>
+</ul>
+
+<h2 id="event-loop">The event loop: just three rules</h2>
+
+<p>How exactly does "queue up the continuation" work? JavaScript has two kinds of queues:</p>
+<ul>
+  <li><strong>Task queue (macrotasks)</strong>: timer callbacks (<code>setTimeout</code>), I/O completion callbacks, user events (clicks), etc.</li>
+  <li><strong>Microtask queue</strong>: Promise continuations (<code>.then</code> callbacks, code after <code>await</code>).</li>
+</ul>
+
+<p>The event loop's rules:</p>
+<ol class="steps">
+  <li>Take <strong>one</strong> task from the task queue and run it until the call stack is empty (sync code runs to completion, never interrupted).</li>
+  <li>Drain the <strong>entire</strong> microtask queue (microtasks added while draining also run in this round).</li>
+  <li>(Browser) render the page if needed. Go back to step 1.</li>
+</ol>
+
+<p>Here's a classic snippet, step by step. Click "Next" and watch the call stack and both queues at every step, not just the final output:</p>
+
+<div data-widget="event-loop"></div>
+
+<p>Two things in this demo are counter-intuitive: <code>setTimeout(fn, 0)</code> doesn't run "immediately" — it waits behind every microtask; and an <code>async</code> function runs <strong>synchronously</strong> until its first <code>await</code> (which is why D prints before F).</p>
+
+<h2 id="promise">Promises and async/await</h2>
+
+<h3>What a Promise is</h3>
+
+<p>A Promise is a container object for a "future value" with exactly three states: <strong>pending</strong> → <strong>fulfilled (with a value)</strong> or <strong>rejected (with an error)</strong>. Once settled, it never changes. If you've used Java's <code>CompletableFuture</code> or C#'s <code>Task</code>, the concept is nearly identical.</p>
+
+<p><code>async</code>/<code>await</code> is syntactic sugar over Promises:</p>
+<ul>
+  <li>An <code>async function</code> always returns a Promise.</li>
+  <li><code>await p</code> suspends the current async function (<em>without blocking the thread</em>) and registers "the rest of the code" as a microtask for when p settles.</li>
+  <li>If the awaited Promise rejects, it throws at that spot, catchable with <code>try/catch</code>.</li>
+</ul>
+
+<script type="text/plain" class="code" data-lang="ts" data-title="LinkNote: fetch a page title">
+async function fetchTitle(url: string): Promise<string> {
+  const res = await fetch(url, { signal: AbortSignal.timeout(5_000) }); // 5-second timeout
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const html = await res.text();
+  return html.match(/<title>(.*?)<\/title>/i)?.[1] ?? url;
+}
+
+try {
+  const title = await fetchTitle("https://react.dev");
+  console.log(title);
+} catch (err) {
+  console.error("fetch failed", err);   // network errors, timeouts, non-2xx all land here
+}
+</script>
+
+<h3>The three most common async bugs <span class="badge deep">Deep</span></h3>
+
+<p>None of these throw errors; they just make the program "occasionally wrong". Agents write them often enough that you must recognize them on sight.</p>
+
+<h4>Bug 1: async inside <code>forEach</code></h4>
+
+<script type="text/plain" class="code" data-lang="ts">
+// ✗ Wrong: forEach doesn't await async callbacks; "all done" prints first
+links.forEach(async (link) => {
+  await summarize(link);
+});
+console.log("all done");
+
+// ✓ One after another: for...of
+for (const link of links) {
+  await summarize(link);
+}
+
+// ✓ In parallel: Promise.all
+await Promise.all(links.map((link) => summarize(link)));
+</script>
+
+<p>Why: <code>forEach</code> calls the callback and throws away its return value (a Promise); it has no idea it should wait.</p>
+
+<h4>Bug 2: the missing await (a "floating promise")</h4>
+
+<script type="text/plain" class="code" data-lang="ts">
+async function saveLink(url: string) {
+  db.insert(links).values({ url });   // ✗ forgot await
+  return { ok: true };                // the insert may not be done — or may have failed, silently
+}
+</script>
+
+<p>Consequences: you report success before the data is written; if the insert fails, the error becomes an "unhandled promise rejection" that can crash the Node process, or the work gets frozen mid-flight in a serverless environment because the function already returned. Defense: turn on the lint rule <code>no-floating-promises</code> (from typescript-eslint; Biome has an equivalent).</p>
+
+<h4>Bug 3: needless serialization</h4>
+
+<script type="text/plain" class="code" data-lang="ts">
+// ✗ Two independent requests run one after another: total = A + B
+const user = await getUser(id);
+const links = await getLinks(id);
+
+// ✓ In parallel: total ≈ max(A, B)
+const [user2, links2] = await Promise.all([getUser(id), getLinks(id)]);
+</script>
+
+<p>This is especially common in server-rendered pages, forming a "request waterfall" — you'll meet it again in Chapter 07.</p>
+
+<h3>Tools for combining Promises</h3>
+
+<table>
+  <thead><tr><th>API</th><th>Behavior</th><th>Use when</th></tr></thead>
+  <tbody>
+    <tr><td><code>Promise.all</code></td><td>Succeeds only if all succeed; fails as soon as one fails</td><td>Parallel requests that are all required</td></tr>
+    <tr><td><code>Promise.allSettled</code></td><td>Waits for all, then reports each success or failure</td><td>Batches that tolerate partial failure (fetching 10 links)</td></tr>
+    <tr><td><code>Promise.race</code></td><td>The first to settle (either way) decides</td><td>Hand-rolled timeouts (AbortSignal is preferred now)</td></tr>
+    <tr><td><code>Promise.any</code></td><td>The first to succeed decides</td><td>Take the fastest of several mirrors</td></tr>
+  </tbody>
+</table>
+
+<div class="callout tip">
+  <span class="callout-title">Concurrency limits</span>
+  <p><code>Promise.all(1000 requests)</code> fires 1000 requests at once, which can blow through the other side's rate limit or your own connection pool. When you need a limit, use a small library like <code>p-limit</code> or process in batches. When giving an agent a task, state the concurrency limit as an explicit constraint.</p>
+</div>
+
+<h3>Cancellation: AbortController</h3>
+
+<p>JS Promises can't be cancelled on their own. The standard approach is to pass an <code>AbortSignal</code>: <code>fetch</code> and many SDKs (LLM SDKs included) accept one. A user closing the page, changing the search term, or a timeout should all trigger cancellation to avoid wasting resources — and with LLM calls, the waste is real money.</p>
+
+<h2 id="references">Values, references and equality</h2>
+
+<p>In JS, primitive values (<code>string</code>, <code>number</code>, <code>boolean</code>, <code>null</code>, <code>undefined</code>, <code>bigint</code>, <code>symbol</code>) compare by value; objects, arrays and functions are <strong>references</strong>, and <code>===</code> asks "is this the same object?", not "is the content equal?". That matches Java's <code>==</code> on objects.</p>
+
+<script type="text/plain" class="code" data-lang="ts">
+const a = { tag: "react" };
+const b = { tag: "react" };
+a === b;          // false: two different objects
+const c = a;
+c.tag = "vue";
+a.tag;            // "vue": a and c point to the same object
+
+// Immutable update: create a new object instead of mutating the original
+const d = { ...a, tag: "svelte" };   // spread: shallow copy + override
+a === d;          // false — "something changed" is detectable with one reference comparison
+</script>
+
+<p>Why dwell on this? Because <strong>React decides whether state changed by comparing references</strong>. Mutate an array in place (<code>list.push(x)</code>) instead of creating a new one, and React concludes nothing changed — the UI doesn't update. This is a core pitfall in Chapter 06.</p>
+
+<p>Note that spread is a <strong>shallow copy</strong>: nested objects are still shared. For a deep copy, use the built-in <code>structuredClone(obj)</code>.</p>
+
+<h2 id="closures">Closures</h2>
+
+<p>A function "remembers" the variables in the scope where it was created, even after the outer function returns. That's a closure. Java lambdas can capture outer variables too (as long as they're effectively final); Go's anonymous functions behave almost identically.</p>
+
+<script type="text/plain" class="code" data-lang="ts">
+function makeCounter() {
+  let count = 0;                 // local variable of the outer function
+  return () => {
+    count += 1;                  // the inner function "remembers" count
+    return count;
+  };
+}
+const next = makeCounter();
+next(); // 1
+next(); // 2 — count lives on in the closure after makeCounter returned
+</script>
+
+<p>Closures themselves are easy. The real-world trap is the <strong>stale closure</strong>: a function captures the variables that existed <em>at the moment it was created</em>. If new variables are created later (React creates new state variables on every render), the old function still sees the old values. Chapter 06 shows a concrete example.</p>
+
+<h2 id="modules">Modules: import / export</h2>
+
+<p>Modern JS uses <strong>ES modules (ESM)</strong>:</p>
+
+<script type="text/plain" class="code" data-lang="ts" data-title="src/lib/url.ts">
+export function normalize(url: string) { /* ... */ }     // named export
+export const MAX_LINKS = 500;
+export default function isValid(url: string) { /* ... */ } // default export
+</script>
+
+<script type="text/plain" class="code" data-lang="ts" data-title="src/app.ts">
+import isValid, { normalize, MAX_LINKS } from "./lib/url";
+import type { Link } from "./types";          // type-only import: the whole line is deleted on compile
+const { heavy } = await import("./heavy");    // dynamic import: loaded on demand; bundler splits it out
+</script>
+
+<p>Things you need to know:</p>
+<ul>
+  <li><strong>A module executes once</strong>: its top-level code runs on first import; every later import gets the same exports. This is often used for singletons, e.g. one database client for the whole app.</li>
+  <li><strong>CommonJS (CJS)</strong> is Node's old module system (<code>require</code> / <code>module.exports</code>). You'll still see it in older libraries and tutorials. Mixing the two is the source of errors like <code>ERR_REQUIRE_ESM</code>. New projects should use ESM (<code>"type": "module"</code>). <span class="badge aware">Aware</span></li>
+  <li>Stylistically, most TS projects prefer <strong>named exports</strong>: renames and auto-imports are more reliable. Some framework conventions require default exports (e.g. Next.js <code>page.tsx</code>).</li>
+</ul>
+
+<h2 id="syntax">Syntax cheat sheet for experienced developers <span class="badge use">Use</span></h2>
+
+<p>These appear everywhere in agent-generated code. No need to memorize them, but you should recognize them instantly:</p>
+
+<table>
+  <thead><tr><th>Syntax</th><th>Meaning</th><th>Analogy</th></tr></thead>
+  <tbody>
+    <tr><td><code>const</code> / <code>let</code></td><td>Not reassignable / reassignable (don't use <code>var</code>)</td><td>Java <code>final</code> / plain variable</td></tr>
+    <tr><td><code>(x) =&gt; x * 2</code></td><td>Arrow function</td><td>Java lambda</td></tr>
+    <tr><td><code>const { id, url } = link</code></td><td>Destructuring: pull fields out of an object</td><td>Python tuple unpacking</td></tr>
+    <tr><td><code>const [first, ...rest] = arr</code></td><td>Array destructuring + rest</td><td>Python <code>first, *rest</code></td></tr>
+    <tr><td><code>{ ...a, b: 1 }</code></td><td>Spread: shallow copy with overrides</td><td>Python <code>{**a, "b": 1}</code></td></tr>
+    <tr><td><code>`Hi ${name}`</code></td><td>Template literal</td><td>Python f-string</td></tr>
+    <tr><td><code>a?.b?.c</code></td><td>Optional chaining: returns undefined on null/undefined</td><td>Kotlin <code>?.</code></td></tr>
+    <tr><td><code>a ?? b</code></td><td>Use b when a is null/undefined</td><td>Kotlin <code>?:</code></td></tr>
+    <tr><td><code>a || b</code></td><td>Use b when a is "falsy" (<code>0</code> and <code>""</code> count!)</td><td>—</td></tr>
+    <tr><td><code>arr.map / filter / reduce</code></td><td>Functional operations returning new arrays</td><td>Java Streams</td></tr>
+    <tr><td><code>{ url }</code></td><td>Property shorthand for <code>{ url: url }</code></td><td>—</td></tr>
+  </tbody>
+</table>
+
+<div class="callout warn">
+  <span class="callout-title">Two pieces of historical baggage</span>
+  <ul>
+    <li><strong>Always use <code>===</code>, never <code>==</code>.</strong> <code>==</code> does implicit coercion: <code>"0" == false</code> is true.</li>
+    <li><strong>Know <code>??</code> from <code>||</code>.</strong> <code>count || 10</code> yields 10 when count is 0 — usually a bug. For "default only when missing", use <code>??</code>.</li>
+  </ul>
+</div>
+
+<p>On <code>this</code> and <code>class</code>: <span class="badge aware">Aware</span> modern TS full-stack code is mostly functions and plain objects; <code>class</code> isn't used much (React components dropped classes long ago). Just know that <code>this</code> in a regular function depends on <em>how it's called</em>, while arrow functions have no <code>this</code> of their own and use the outer one. When you hit a related bug, asking the agent to switch to an arrow function or pass the value explicitly usually solves it.</p>
+
+<div class="callout project">
+  <span class="callout-title">Where this lands in LinkNote</span>
+  <p>A user imports 20 links at once. Requirements: fetch and summarize each; at most 3 at a time; one failure doesn't affect the rest; any single link taking over 20 seconds counts as a timeout; report success/failure counts when everything finishes.</p>
+  <p>Map them to this chapter: "at most 3" = a concurrency limit; "one failure doesn't affect the rest" = <code>Promise.allSettled</code>; "20-second timeout" = <code>AbortSignal.timeout(20_000)</code>; "report when everything finishes" = you must await the aggregate result, not use <code>forEach(async)</code>.</p>
+</div>
+
+<div class="callout agent">
+  <span class="callout-title">Tell the agent</span>
+  <div class="compare">
+    <div class="head bad">Vague</div><div class="head good">Precise</div>
+    <div class="bad">"Bulk import is sometimes off, fix it."</div>
+    <div class="good">"<code>importLinks</code> uses <code>forEach(async)</code> on line 42, so the function returns before processing finishes. Switch to parallel processing with a concurrency limit of 3, collect results with <code>Promise.allSettled</code>, add a 20-second timeout per task (AbortSignal), and return <code>{ ok: number; failed: { url: string; reason: string }[] }</code>. Write one test for a timeout and one for partial failure."</div>
+  </div>
+  <p>The precise version uses this chapter's vocabulary: <em>concurrency limit, allSettled, AbortSignal, timeout</em>. With the right words, the agent doesn't have to guess your intent.</p>
+</div>
+
+<div class="callout interview">
+  <span class="callout-title">Interview corner</span>
+  <p><strong>Q: What's the difference between tasks and microtasks? What does this print?</strong> (a variant to test yourself)</p>
+  <script type="text/plain" class="code" data-lang="js">
+setTimeout(() => console.log(1));
+Promise.resolve().then(() => {
+  console.log(2);
+  setTimeout(() => console.log(3));
+  Promise.resolve().then(() => console.log(4));
+});
+console.log(5);
+  </script>
+  <p>Answer framework: state the rules first (sync code → drain microtasks, including ones added while draining → take one task), then trace line by line. Output: <strong>5 2 4 1 3</strong>. 4 comes before 1 because the microtask queue is fully drained in this round; 3 comes after 1 because it joined the task queue later.</p>
+</div>
+
+<h2 id="check">Self-check</h2>
+
+<details class="check">
+  <summary>1. In the demo, replace <code>await null</code> with <code>await new Promise(r =&gt; setTimeout(r, 0))</code>. Which prints first, E or B?</summary>
+  <div class="answer"><p>B. The second half containing E now continues only after a <code>setTimeout</code> fires, and that timer was registered <em>after</em> B's timer; both are 0ms, so they queue in order. The order becomes A D F C B E. The key is tracking "which queue the remaining code is hanging on".</p></div>
+</details>
+
+<details class="check">
+  <summary>2. In a Node API service, one endpoint synchronously parses a 50MB JSON file (about 800ms). What happens to <em>other</em> endpoints?</summary>
+  <div class="answer"><p>For those 800ms the main thread is busy; no other request — even one that returns a constant — can be handled, so everyone's latency grows by ~800ms. Fixes: stream the parsing, move it to a worker thread, preprocess and cache, or push it to a background job.</p></div>
+</details>
+
+<details class="check">
+  <summary>3. This code wants to "add an item and notify the UI". Why might the UI not update? <code>items.push(newItem); setItems(items);</code></summary>
+  <div class="answer"><p><code>push</code> mutates the original array, so <code>items</code> is still the same reference. React compares references to detect state changes, sees "the same array", and assumes nothing changed. Write <code>setItems([...items, newItem])</code> to create a new array.</p></div>
+</details>
+
+<details class="check">
+  <summary>4. <code>const limit = Number(params.limit) || 20;</code> — what happens when the user passes <code>limit=0</code>? How should it be written?</summary>
+  <div class="answer"><p>0 is falsy, so <code>limit</code> becomes 20. If 0 is valid, check for missing first (<code>params.limit == null</code> or <code>??</code>). Better still, parse and validate params with Zod in one place (Chapter 04).</p></div>
+</details>
+
+</article></main>
+</body>
+</html>

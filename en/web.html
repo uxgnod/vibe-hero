@@ -1,0 +1,331 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Web Platform Fundamentals · Vibe Hero</title>
+<meta name="description" content="From typing a URL to an interactive page: HTTP, cookies and auth, same-origin policy and CORS, caching, the DOM, CSS layout, Tailwind and shadcn/ui.">
+<!-- seo -->
+<link rel="canonical" href="https://uxgnod.github.io/vibe-hero/en/web.html">
+<link rel="alternate" hreflang="zh-CN" href="https://uxgnod.github.io/vibe-hero/zh/web.html">
+<link rel="alternate" hreflang="en" href="https://uxgnod.github.io/vibe-hero/en/web.html">
+<link rel="alternate" hreflang="x-default" href="https://uxgnod.github.io/vibe-hero/en/web.html">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Vibe Hero">
+<meta property="og:title" content="Web Platform Fundamentals · Vibe Hero">
+<meta property="og:description" content="From typing a URL to an interactive page: HTTP, cookies and auth, same-origin policy and CORS, caching, the DOM, CSS layout, Tailwind and shadcn/ui.">
+<meta property="og:url" content="https://uxgnod.github.io/vibe-hero/en/web.html">
+<meta property="og:image" content="https://uxgnod.github.io/vibe-hero/assets/og-image.png">
+<meta property="og:locale" content="en_US">
+<meta property="og:locale:alternate" content="zh_CN">
+<meta name="twitter:card" content="summary_large_image">
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "TechArticle", "headline": "Web Platform Fundamentals", "description": "From typing a URL to an interactive page: HTTP, cookies and auth, same-origin policy and CORS, caching, the DOM, CSS layout, Tailwind and shadcn/ui.", "inLanguage": "en", "url": "https://uxgnod.github.io/vibe-hero/en/web.html", "image": "https://uxgnod.github.io/vibe-hero/assets/og-image.png", "dateModified": "2026-09-26", "author": {"@type": "Person", "name": "uxgnod", "url": "https://github.com/uxgnod"}, "isPartOf": {"@type": "WebSite", "name": "Vibe Hero", "url": "https://uxgnod.github.io/vibe-hero/"}}</script>
+<link rel="icon" href="../assets/favicon.svg">
+<link rel="stylesheet" href="../assets/style.css">
+<script>try{var t=localStorage.getItem('vh-theme');if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+<script defer src="../assets/app.js"></script>
+<script defer src="../assets/widgets.js"></script>
+</head>
+<body>
+<main class="content"><article class="doc">
+
+<p class="eyebrow">CHAPTER 05 · FRONTEND</p>
+<h1>Web Platform Fundamentals</h1>
+<p class="lead">Backend engineers know HTTP, but usually only from the server's side. This chapter moves to the browser's side: what the browser does for you, which security rules it enforces, and how it turns HTML and CSS into pixels. These rules don't change no matter which framework you use.</p>
+<div class="meta"><span>⏱ ~50 min</span><span class="badge deep">Deep</span> (HTTP, cookies, CORS) <span class="badge use">Use</span> (HTML, Tailwind) <span class="badge aware">Aware</span> (CSS details)</div>
+
+<div class="goals">
+  <div class="goals-title">By the end of this chapter you should be able to:</div>
+  <ul>
+    <li>Walk through the main steps from typing a URL to an interactive page, in order.</li>
+    <li>Explain why a request that works with curl gets blocked by CORS in the browser, and the right direction for fixing it.</li>
+    <li>Justify putting session credentials in an HttpOnly cookie instead of localStorage.</li>
+    <li>Read Tailwind code and describe UI requirements to an agent in precise terms.</li>
+  </ul>
+</div>
+
+<h2 id="question">Opening: curl works, the browser doesn't</h2>
+
+<div class="callout question">
+  <span class="callout-title">Opening question</span>
+  <p>LinkNote's frontend lives at <code>app.linknote.dev</code> and the API at <code>api.linknote.dev</code>. Calling the API with curl works perfectly; the <code>fetch</code> in the page logs <code>blocked by CORS policy</code>. The agent suggests "set <code>Access-Control-Allow-Origin</code> to <code>*</code> on the server". <strong>Why do curl and the browser behave differently? What's wrong with the agent's suggestion?</strong></p>
+</div>
+
+<p><strong>Where the answer lies:</strong> the cross-origin restriction isn't a server rule; it's a rule the <strong>browser</strong> enforces to protect users. curl isn't a browser, so it isn't restricted. The browser blocks because it automatically attaches the user's cookies — if any site could read any other site's responses, a malicious page could read your data as you. Setting <code>*</code> may "make the error go away", but it <em>cannot</em> be combined with cookies and it opens the API to every origin. The right direction: declare exactly which origins are allowed, or avoid cross-origin altogether by putting frontend and API on the same origin.</p>
+
+<p>To really understand this, start from a full page load.</p>
+
+<h2 id="journey">From typing a URL to an interactive page</h2>
+
+<figure class="diagram">
+<div class="diagram-scroll">
+<svg viewBox="0 0 780 330" role="img" aria-label="The page-load journey">
+  <defs><marker id="w1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="ar-fill"/></marker></defs>
+  <g font-size="12">
+    <text x="15" y="24" font-weight="700" font-size="13" class="t-accent">Network</text>
+    <rect x="15" y="34" width="110" height="46" rx="8" class="box-soft"/><text x="70" y="54" text-anchor="middle" font-weight="700">① DNS</text><text x="70" y="70" text-anchor="middle" font-size="10.5" class="t-mute">domain → IP</text>
+    <rect x="140" y="34" width="120" height="46" rx="8" class="box-soft"/><text x="200" y="54" text-anchor="middle" font-weight="700">② TCP + TLS</text><text x="200" y="70" text-anchor="middle" font-size="10.5" class="t-mute">encrypted connection</text>
+    <rect x="275" y="34" width="130" height="46" rx="8" class="box-accent"/><text x="340" y="54" text-anchor="middle" font-weight="700">③ HTTP request</text><text x="340" y="70" text-anchor="middle" font-size="10.5" class="t-mute">GET / + cookies</text>
+    <rect x="420" y="34" width="150" height="46" rx="8" class="box-purple"/><text x="495" y="54" text-anchor="middle" font-weight="700">④ Server / CDN</text><text x="495" y="70" text-anchor="middle" font-size="10.5" class="t-mute">may hit CDN cache first</text>
+    <rect x="585" y="34" width="180" height="46" rx="8" class="box-accent"/><text x="675" y="54" text-anchor="middle" font-weight="700">⑤ HTML response</text><text x="675" y="70" text-anchor="middle" font-size="10.5" class="t-mute">status + headers + body</text>
+    <line x1="125" y1="57" x2="138" y2="57" class="ln" marker-end="url(#w1)"/>
+    <line x1="260" y1="57" x2="273" y2="57" class="ln" marker-end="url(#w1)"/>
+    <line x1="405" y1="57" x2="418" y2="57" class="ln" marker-end="url(#w1)"/>
+    <line x1="570" y1="57" x2="583" y2="57" class="ln" marker-end="url(#w1)"/>
+
+    <text x="15" y="120" font-weight="700" font-size="13" class="t-use">Browser</text>
+    <rect x="585" y="130" width="180" height="46" rx="8" class="box-use"/><text x="675" y="150" text-anchor="middle" font-weight="700">⑥ Parse HTML → DOM</text><text x="675" y="166" text-anchor="middle" font-size="10.5" class="t-mute">fetch CSS/JS as found</text>
+    <rect x="390" y="130" width="180" height="46" rx="8" class="box-use"/><text x="480" y="150" text-anchor="middle" font-weight="700">⑦ CSS → CSSOM</text><text x="480" y="166" text-anchor="middle" font-size="10.5" class="t-mute">CSS blocks rendering</text>
+    <rect x="195" y="130" width="180" height="46" rx="8" class="box-use"/><text x="285" y="150" text-anchor="middle" font-weight="700">⑧ Layout + paint</text><text x="285" y="166" text-anchor="middle" font-size="10.5" class="t-mute">positions → pixels (first visible)</text>
+    <rect x="15" y="130" width="165" height="46" rx="8" class="box-ok"/><text x="97" y="150" text-anchor="middle" font-weight="700">⑨ Run JS</text><text x="97" y="166" text-anchor="middle" font-size="10.5" class="t-mute">bind events → interactive</text>
+    <line x1="675" y1="82" x2="675" y2="128" class="ln" marker-end="url(#w1)"/>
+    <line x1="585" y1="153" x2="572" y2="153" class="ln" marker-end="url(#w1)"/>
+    <line x1="390" y1="153" x2="377" y2="153" class="ln" marker-end="url(#w1)"/>
+    <line x1="195" y1="153" x2="182" y2="153" class="ln" marker-end="url(#w1)"/>
+
+    <text x="15" y="220" font-weight="700" font-size="13" class="t-purple">Afterwards</text>
+    <rect x="15" y="230" width="360" height="80" rx="8" class="box"/>
+    <text x="30" y="254" font-weight="700">⑩ User acts → JS calls fetch → updates DOM</text>
+    <text x="30" y="276" font-size="11.5" class="t-soft">No full reload: this is how single-page apps work;</text>
+    <text x="30" y="294" font-size="11.5" class="t-soft">React turns data changes into DOM changes (Ch. 06).</text>
+    <rect x="395" y="230" width="370" height="80" rx="8" class="box"/>
+    <text x="410" y="254" font-weight="700">The rendering mode decides what's in ⑤</text>
+    <text x="410" y="276" font-size="11.5" class="t-soft">Client rendering: ⑤ is an empty shell; content after ⑨.</text>
+    <text x="410" y="294" font-size="11.5" class="t-soft">Server rendering: ⑤ has full content, visible at ⑧ (Ch. 07).</text>
+  </g>
+</svg>
+</div>
+<figcaption>The main path of a page load (simplified: HTTP/2 multiplexing, preloading, cache hits etc. omitted).</figcaption>
+</figure>
+
+<p>You'll reuse this diagram: in Chapter 07, "why server rendering shows the first screen faster" is really a discussion of what's inside ⑤ and how much JS ⑨ needs.</p>
+
+<h2 id="http">HTTP: the parts you need to own <span class="badge deep">Deep</span></h2>
+
+<p>As a backend developer you know methods and status codes. Here are the points that matter most in full-stack work:</p>
+
+<table>
+  <thead><tr><th>Status</th><th>Meaning</th><th>Typical full-stack scenario</th></tr></thead>
+  <tbody>
+    <tr><td><code>200 / 201 / 204</code></td><td>OK / Created / No Content</td><td>Normal request; bookmark created; delete succeeded</td></tr>
+    <tr><td><code>301 / 302 / 307 / 308</code></td><td>Redirects</td><td>Post-login redirect; 307/308 keep the method</td></tr>
+    <tr><td><code>304</code></td><td>Not Modified (use cache)</td><td>ETag revalidation hit</td></tr>
+    <tr><td><code>400 / 422</code></td><td>Malformed / failed validation</td><td>Return on Zod failure with per-field errors</td></tr>
+    <tr><td><code>401 / 403</code></td><td>Unauthenticated (who are you?) / Forbidden (I know you, but no)</td><td>Often confused — keep them apart</td></tr>
+    <tr><td><code>404 / 409</code></td><td>Not found / Conflict</td><td>Saving the same URL twice may return 409</td></tr>
+    <tr><td><code>429</code></td><td>Too many requests</td><td>Rate limiting; you'll see it often from LLM APIs</td></tr>
+    <tr><td><code>500 / 502 / 503 / 504</code></td><td>Server error / bad gateway / unavailable / gateway timeout</td><td>504 is common when serverless functions time out</td></tr>
+  </tbody>
+</table>
+
+<p>One more thing: HTTP is <strong>stateless</strong>. The server doesn't "remember" who sent the previous request. "Being logged in" means every request carries a credential, and in browsers the most common carrier is a cookie.</p>
+
+<h2 id="cookies">Cookies and login: what the browser does "automatically" <span class="badge deep">Deep</span></h2>
+
+<p>The key property of cookies: <strong>the browser automatically attaches them to requests sent to the matching domain</strong>, with no JS involved. That's why they're convenient — and the root of a whole class of security problems.</p>
+
+<script type="text/plain" class="code" data-lang="text" data-title="Response header after a successful login">
+Set-Cookie: session=8f3a…c21; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=2592000
+</script>
+
+<table>
+  <thead><tr><th>Attribute</th><th>Effect</th><th>Without it</th></tr></thead>
+  <tbody>
+    <tr><td><code>HttpOnly</code></td><td>JS can't read it (<code>document.cookie</code> doesn't see it)</td><td>If a malicious script gets injected (XSS), the session credential is stolen outright</td></tr>
+    <tr><td><code>Secure</code></td><td>Only sent over HTTPS</td><td>Can be sniffed on insecure networks</td></tr>
+    <tr><td><code>SameSite=Lax</code></td><td>Not sent on requests initiated by other sites (except top-level navigations)</td><td>Cross-site request forgery (CSRF): a malicious site makes your browser call your API with your cookie</td></tr>
+    <tr><td><code>Max-Age</code> / <code>Expires</code></td><td>Expiry</td><td>Dies when the browser closes (session cookie)</td></tr>
+  </tbody>
+</table>
+
+<div class="callout tip">
+  <span class="callout-title">Where do tokens go: cookie or localStorage?</span>
+  <p>Many tutorials (and agents) store a JWT in localStorage and add it to request headers manually. The problem: localStorage is readable by any JS on the page, so one XSS steals the token. For your own site, <strong>the safer default is putting the session credential in an HttpOnly + Secure + SameSite cookie</strong>. Mainstream auth libraries (Better Auth, Auth.js, Clerk) do this by default. localStorage is fine for non-sensitive UI preferences.</p>
+</div>
+
+<h2 id="cors">Same-origin policy and CORS <span class="badge deep">Deep</span></h2>
+
+<p>An <strong>origin</strong> = scheme + host + port. <code>https://app.linknote.dev</code> and <code>https://api.linknote.dev</code> are different origins; so are <code>http://localhost:5173</code> and <code>http://localhost:8787</code>.</p>
+
+<p>The <strong>same-origin policy</strong>: by default the browser won't let JS from one origin read responses from another. <strong>CORS (Cross-Origin Resource Sharing)</strong> is how a server "opts out": it declares in response headers which origins may read it.</p>
+
+<figure class="diagram">
+<div class="diagram-scroll">
+<svg viewBox="0 0 780 250" role="img" aria-label="CORS preflight flow">
+  <defs><marker id="w2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="ar-accent"/></marker>
+  <marker id="w3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="ar-ok"/></marker></defs>
+  <rect x="20" y="20" width="200" height="210" rx="10" class="box-use"/>
+  <text x="120" y="46" text-anchor="middle" font-weight="700" font-size="13.5">Browser</text>
+  <text x="120" y="66" text-anchor="middle" font-size="11" class="t-mute">page origin: app.linknote.dev</text>
+  <rect x="560" y="20" width="200" height="210" rx="10" class="box-purple"/>
+  <text x="660" y="46" text-anchor="middle" font-weight="700" font-size="13.5">API server</text>
+  <text x="660" y="66" text-anchor="middle" font-size="11" class="t-mute">api.linknote.dev</text>
+  <g font-size="11.5">
+    <line x1="222" y1="92" x2="556" y2="92" class="ln-accent" marker-end="url(#w2)"/>
+    <text x="390" y="86" text-anchor="middle" class="t-mono">① OPTIONS /links (preflight) Origin: https://app.linknote.dev</text>
+    <line x1="556" y1="130" x2="222" y2="130" class="ln-ok" marker-end="url(#w3)"/>
+    <text x="390" y="122" text-anchor="middle" class="t-mono">② Access-Control-Allow-Origin: https://app.linknote.dev</text>
+    <text x="390" y="146" text-anchor="middle" class="t-mono t-mute">Access-Control-Allow-Credentials: true</text>
+    <line x1="222" y1="180" x2="556" y2="180" class="ln-accent" marker-end="url(#w2)"/>
+    <text x="390" y="174" text-anchor="middle" class="t-mono">③ POST /links (the real request, with cookies)</text>
+    <line x1="556" y1="212" x2="222" y2="212" class="ln-ok" marker-end="url(#w3)"/>
+    <text x="390" y="206" text-anchor="middle" class="t-mono">④ 201 + same CORS headers → only now can JS read it</text>
+  </g>
+</svg>
+</div>
+<figcaption>Non-simple requests (e.g. a POST with a JSON body) send a preflight first. The server's answer decides whether the browser lets it through.</figcaption>
+</figure>
+
+<p>Back to the agent's suggestion in the opening:</p>
+<ul>
+  <li><code>Access-Control-Allow-Origin: *</code> cannot be combined with <code>Allow-Credentials: true</code>. When cookies are needed, the browser simply refuses — the problem isn't actually solved.</li>
+  <li>Even without cookies, <code>*</code> means any website can call your API and read the result. Fine for public data, not for user data.</li>
+</ul>
+
+<p><strong>The better fix is often to avoid cross-origin entirely</strong>: put frontend and API on the same origin. Full-stack frameworks (Next.js, TanStack Start) do this naturally — pages and API routes come from the same service; or split by path under one domain (<code>/api/*</code> goes to the backend). In development, use the dev server's proxy.</p>
+
+<h2 id="caching">Caching: send the same thing only once <span class="badge use">Use</span></h2>
+
+<p>Browsers, CDNs and servers may all cache responses, mostly controlled by the <code>Cache-Control</code> header. The standard modern frontend strategy is "two kinds of files, two policies":</p>
+
+<table>
+  <thead><tr><th>Resource</th><th>File name</th><th>Cache policy</th><th>Why</th></tr></thead>
+  <tbody>
+    <tr><td>JS / CSS / images</td><td><code>app.3f9a1c.js</code> (content hash)</td><td><code>public, max-age=31536000, immutable</code></td><td>Content change → name change, so old files can be cached forever</td></tr>
+    <tr><td>HTML</td><td><code>index.html</code></td><td><code>no-cache</code> (revalidate every time)</td><td>HTML references the latest hashed names; it must be fresh</td></tr>
+    <tr><td>API responses</td><td>—</td><td>Depends; user-private data should be <code>private</code> or uncached</td><td>So the CDN never serves user A's data to user B</td></tr>
+  </tbody>
+</table>
+
+<p>Bundlers add hashes automatically and platforms set sensible defaults. You need to know the mechanism to debug "deployed, but users still see the old version" and "the CDN cached something it shouldn't have".</p>
+
+<h2 id="dom">The DOM: the browser's UI data structure</h2>
+
+<p>The browser parses HTML into an object tree called the <strong>DOM (Document Object Model)</strong>. JS can read and write this tree, and the browser reflects changes on screen.</p>
+
+<script type="text/plain" class="code" data-lang="ts" data-title="Manipulating the DOM directly, no framework">
+const list = document.querySelector("#links")!;
+const button = document.querySelector("#add")!;
+
+button.addEventListener("click", () => {
+  const li = document.createElement("li");
+  li.textContent = "https://react.dev";
+  list.appendChild(li);        // imperative: find the spot yourself, change it yourself
+});
+</script>
+
+<p>That's <strong>imperative</strong> code: you tell the browser how to change things step by step. Fine for simple pages; when the same data shows in five places and you must also handle loading, error and empty states, keeping the DOM in sync by hand spirals out of control. That's exactly what libraries like React solve — you describe "what the UI should look like", and it figures out "how the DOM must change".</p>
+
+<p>Day to day you'll rarely touch the DOM directly, but know that DOM events <strong>bubble</strong> (click a child and the parent's listener also fires), and forms submit and reload the page by default (hence the ubiquitous <code>e.preventDefault()</code>). <span class="badge aware">Aware</span></p>
+
+<h2 id="html">HTML: choosing the right tag matters more than you think <span class="badge use">Use</span></h2>
+
+<p>A common problem in agent code: a <code>&lt;div onClick&gt;</code> used as a button. It "works", but keyboards can't focus it, screen readers don't know it's a button, and it won't submit a form. Semantic HTML gives you all that for free:</p>
+
+<table>
+  <thead><tr><th>Need</th><th>Use</th><th>Don't use</th></tr></thead>
+  <tbody>
+    <tr><td>Click to perform an action</td><td><code>&lt;button type="button"&gt;</code></td><td><code>&lt;div onClick&gt;</code></td></tr>
+    <tr><td>Go to another page</td><td><code>&lt;a href&gt;</code> (or the framework's <code>&lt;Link&gt;</code>)</td><td><code>&lt;button onClick={navigate}&gt;</code></td></tr>
+    <tr><td>Collect input and submit</td><td><code>&lt;form&gt;</code> + <code>&lt;label&gt;</code> + <code>&lt;input&gt;</code></td><td>Loose inputs + reading values on button click</td></tr>
+    <tr><td>Page structure</td><td><code>&lt;header&gt; &lt;nav&gt; &lt;main&gt; &lt;article&gt;</code></td><td><code>&lt;div&gt;</code> everywhere</td></tr>
+  </tbody>
+</table>
+
+<p>These details fall under "accessibility" (a11y). You don't need to be an expert, but put "all main actions can be done with the keyboard alone" in your acceptance criteria.</p>
+
+<h2 id="css">CSS: reading layouts is enough <span class="badge aware">Aware</span></h2>
+
+<p>CSS is a huge field. For a full-stack developer in transition, master just these concepts and leave the rest to agents and component libraries:</p>
+<ul>
+  <li><strong>Box model</strong>: every element is a box of content, padding, border and margin.</li>
+  <li><strong>Flexbox</strong>: one-dimensional layout (a row or a column), alignment and distributing leftover space. Nav bars, button groups, card internals.</li>
+  <li><strong>Grid</strong>: two-dimensional layout. Card grids, overall page layout.</li>
+  <li><strong>Responsive design</strong>: switch layouts by screen width using media queries. Usually "mobile first": write narrow-screen styles first, then add rules for wider screens.</li>
+</ul>
+
+<h2 id="tailwind">Tailwind CSS and shadcn/ui <span class="badge use">Use</span></h2>
+
+<p><strong>Tailwind</strong> is the default for agent-generated UI in 2026. Instead of CSS files, it provides lots of "utility classes", each mapping to one style rule, written directly on elements:</p>
+
+<script type="text/plain" class="code" data-lang="tsx" data-title="LinkNote's bookmark card">
+<article className="rounded-xl border bg-white p-4 shadow-sm hover:shadow-md dark:bg-zinc-900">
+  <h3 className="truncate text-base font-semibold">{title}</h3>
+  <p className="mt-1 line-clamp-2 text-sm text-zinc-600">{summary}</p>
+  <div className="mt-3 flex flex-wrap gap-2">
+    {tags.map((t) => (
+      <span key={t} className="rounded-full bg-blue-50 px-2 py-0.5 text-xs text-blue-700">{t}</span>
+    ))}
+  </div>
+</article>
+</script>
+
+<p>How to read it: <code>p-4</code> = 1rem padding; <code>mt-1</code> = top margin; <code>flex flex-wrap gap-2</code> = flex layout, wrapping, with gaps; prefixes like <code>hover:</code>, <code>dark:</code>, <code>md:</code> mean "only in that state or at that screen size".</p>
+
+<p>Why does it suit the AI era? Style lives with structure, so an agent editing one component doesn't hunt for CSS across files; the class names are a finite, standardized vocabulary models know extremely well; nobody has to invent CSS class names. The cost is long class lists, which matters little when agents write the code.</p>
+
+<div class="callout warn">
+  <span class="callout-title">What changed in Tailwind v4</span>
+  <p>v4 moved configuration out of <code>tailwind.config.js</code> into your CSS file (<code>@import "tailwindcss";</code> plus <code>@theme { ... }</code> for design tokens). Models often generate v3-style config. When you see an agent create <code>tailwind.config.js</code>, check which version the project uses.</p>
+</div>
+
+<p><strong>shadcn/ui</strong> isn't a traditional component-library dependency. It's a set of component <em>source files</em> that a CLI copies into your project (<code>pnpm dlx shadcn@latest add button dialog</code>); after that you edit them freely. Components sit on top of unstyled, accessible primitives (e.g. Radix UI) and are styled with Tailwind. It became mainstream for the same reason as Tailwind: the code is in your repo, where the agent can read and change it.</p>
+
+<h2 id="web-apis">Browser APIs worth knowing <span class="badge aware">Aware</span></h2>
+
+<table>
+  <thead><tr><th>API</th><th>Purpose</th></tr></thead>
+  <tbody>
+    <tr><td><code>fetch</code></td><td>HTTP requests (also on server runtimes)</td></tr>
+    <tr><td><code>URL</code> / <code>URLSearchParams</code></td><td>Parse and build URLs and query strings. Don't concatenate strings by hand</td></tr>
+    <tr><td><code>FormData</code></td><td>Read form data; React form Actions receive it directly</td></tr>
+    <tr><td><code>localStorage</code> / <code>IndexedDB</code></td><td>Local browser storage: simple key-value / large structured data</td></tr>
+    <tr><td><code>EventSource</code> (SSE)</td><td>One-way server push; common for LLM streaming</td></tr>
+    <tr><td><code>WebSocket</code></td><td>Two-way realtime: chat, collaboration</td></tr>
+    <tr><td>Web Worker</td><td>Run computation on a background thread to avoid blocking the main one</td></tr>
+  </tbody>
+</table>
+
+<div class="callout agent">
+  <span class="callout-title">Tell the agent: vocabulary for describing UI</span>
+  <p>UI requirements are the easiest to state vaguely. These words make descriptions precise:</p>
+  <div class="compare">
+    <div class="head bad">Vague</div><div class="head good">Precise</div>
+    <div class="bad">"Make a nice list page."</div>
+    <div class="good">"Bookmark list page: single column on mobile, two-column grid at ≥768px, three at ≥1280px. Each card shows title (one line, truncated), summary (max two lines), tags (pill style). Four states: loading uses skeletons, empty state with a call-to-action button, error state with retry, and the normal list. Use shadcn/ui's Card component."</div>
+    <div class="row-sep"></div>
+    <div class="bad">"The API has a CORS problem, fix it."</div>
+    <div class="good">"The frontend at app.linknote.dev calls api.linknote.dev and must send the session cookie. On the API, allow only that origin, enable credentials, and handle OPTIONS preflight. Don't use the * wildcard. Also evaluate: would switching to a same-origin /api path be simpler?"</div>
+  </div>
+  <p>Useful vocabulary: responsive breakpoints, skeleton, empty state, loading / error states, optimistic update, debounce, infinite scroll / pagination, modal / dialog, drawer / sheet, toast, focus management, keyboard accessible.</p>
+</div>
+
+<div class="callout interview">
+  <span class="callout-title">Interview corner</span>
+  <ul>
+    <li><strong>What happens between typing a URL and seeing the page?</strong> Go through network → server → parsing → rendering → running JS, then go deep on one step you know well (TLS handshake, CDN caching, the critical rendering path).</li>
+    <li><strong>What is CORS, and why is there a preflight?</strong> Start with what the same-origin policy protects (users, because browsers attach credentials automatically), then CORS as the server-declared exemption; requests with custom headers or JSON bodies need a preflight first.</li>
+    <li><strong>What are XSS and CSRF, and how do you defend against them?</strong> XSS: injected script runs in your page → escape output (React does by default), CSP, HttpOnly cookies. CSRF: another site sends requests with your cookies → SameSite cookies, CSRF tokens, checking Origin.</li>
+  </ul>
+</div>
+
+<h2 id="check">Self-check</h2>
+
+<details class="check">
+  <summary>1. In development the frontend runs on <code>localhost:5173</code> and the API on <code>localhost:8787</code>. Same origin? If not, what's the easiest fix?</summary>
+  <div class="answer"><p>Different origins (different ports). The easiest fix is a proxy in the Vite dev server: the browser requests <code>localhost:5173/api/*</code> and the dev server forwards it to 8787. To the browser, that's same-origin. In production, solve it with same-domain deployment or correct CORS config.</p></div>
+</details>
+
+<details class="check">
+  <summary>2. After a release some users report a "blank page", and the console shows a 404 for <code>app.3f9a1c.js</code>. What might be going on?</summary>
+  <div class="answer"><p>The user's browser (or the CDN) cached the <em>old</em> HTML, which references old hashed file names, and the new deployment removed those files. Check whether HTML was wrongly given a long cache lifetime and whether the platform keeps old asset versions around.</p></div>
+</details>
+
+<details class="check">
+  <summary>3. A cookie has <code>HttpOnly</code> but no <code>SameSite</code> (and the browser applies legacy rules). Does it stop XSS from stealing the token? Does it stop CSRF?</summary>
+  <div class="answer"><p>It stops an XSS script from <em>reading</em> the token (though injected script can still send requests as the user from the page). It doesn't stop CSRF: the cookie is still sent automatically on requests initiated by other sites. Modern browsers treat cookies without SameSite as Lax by default, but don't rely on defaults — set it explicitly.</p></div>
+</details>
+
+</article></main>
+</body>
+</html>

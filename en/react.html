@@ -1,0 +1,418 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Thinking in React · Vibe Hero</title>
+<meta name="description" content="UI = f(state): components, state, re-render rules, using effects correctly, data fetching, form Actions and choosing where state lives.">
+<!-- seo -->
+<link rel="canonical" href="https://uxgnod.github.io/vibe-hero/en/react.html">
+<link rel="alternate" hreflang="zh-CN" href="https://uxgnod.github.io/vibe-hero/zh/react.html">
+<link rel="alternate" hreflang="en" href="https://uxgnod.github.io/vibe-hero/en/react.html">
+<link rel="alternate" hreflang="x-default" href="https://uxgnod.github.io/vibe-hero/en/react.html">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Vibe Hero">
+<meta property="og:title" content="Thinking in React · Vibe Hero">
+<meta property="og:description" content="UI = f(state): components, state, re-render rules, using effects correctly, data fetching, form Actions and choosing where state lives.">
+<meta property="og:url" content="https://uxgnod.github.io/vibe-hero/en/react.html">
+<meta property="og:image" content="https://uxgnod.github.io/vibe-hero/assets/og-image.png">
+<meta property="og:locale" content="en_US">
+<meta property="og:locale:alternate" content="zh_CN">
+<meta name="twitter:card" content="summary_large_image">
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "TechArticle", "headline": "Thinking in React", "description": "UI = f(state): components, state, re-render rules, using effects correctly, data fetching, form Actions and choosing where state lives.", "inLanguage": "en", "url": "https://uxgnod.github.io/vibe-hero/en/react.html", "image": "https://uxgnod.github.io/vibe-hero/assets/og-image.png", "dateModified": "2026-09-26", "author": {"@type": "Person", "name": "uxgnod", "url": "https://github.com/uxgnod"}, "isPartOf": {"@type": "WebSite", "name": "Vibe Hero", "url": "https://uxgnod.github.io/vibe-hero/"}}</script>
+<link rel="icon" href="../assets/favicon.svg">
+<link rel="stylesheet" href="../assets/style.css">
+<script>try{var t=localStorage.getItem('vh-theme');if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+<script defer src="../assets/app.js"></script>
+<script defer src="../assets/widgets.js"></script>
+</head>
+<body>
+<main class="content"><article class="doc">
+
+<p class="eyebrow">CHAPTER 06 · FRONTEND</p>
+<h1>Thinking in React</h1>
+<p class="lead">React's API is small. What's hard is the change in thinking: you no longer "modify the UI"; you "describe what the UI should look like for a given state". Master that model and a few re-render rules, and you'll see where agent-written components are redundant and where they'll break.</p>
+<div class="meta"><span>⏱ ~70 min</span><span class="badge deep">Deep</span> (rendering model, state, effects) <span class="badge use">Use</span> (hooks, forms, TanStack Query)</div>
+
+<div class="goals">
+  <div class="goals-title">By the end of this chapter you should be able to:</div>
+  <ul>
+    <li>Explain the full flow after a click: event → state update → component functions run again → diff → DOM update.</li>
+    <li>Predict which components re-render after a given state change.</li>
+    <li>Decide whether a <code>useEffect</code> is necessary and name three common alternatives.</li>
+    <li>Choose the right "home" for any piece of data: local state, lifted state, URL, server cache, global store.</li>
+  </ul>
+</div>
+
+<h2 id="question">Opening: two puzzling behaviors</h2>
+
+<div class="callout question">
+  <span class="callout-title">Opening question</span>
+  <p>Behavior one: you write <code>let count = 0</code> in a component and <code>count++</code> on button click. Logs show count increasing, but the number on screen stays 0.</p>
+  <p>Behavior two: an agent wrote a component that fetches the bookmark list in <code>useEffect</code>. In production, the browser hammers the same endpoint over and over.</p>
+  <p><strong>Both come from the same mechanism. Which one?</strong></p>
+</div>
+
+<p><strong>Where the answer lies:</strong> a React component is a <strong>function that gets called again and again</strong>. Each "render" is one more call. Plain local variables are re-initialized on every call, and changing one doesn't trigger a new call; only "state" held by React survives across calls and triggers a re-run when it changes. And an effect runs conditionally after each render — if it changes state itself, and its dependency condition "looks changed" every time, you get the loop "render → effect → set state → render".</p>
+
+<h2 id="model">The core model: UI = f(state)</h2>
+
+<figure class="diagram">
+<div class="diagram-scroll">
+<svg viewBox="0 0 780 300" role="img" aria-label="React update loop">
+  <defs><marker id="r1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="ar-accent"/></marker></defs>
+  <rect x="20" y="110" width="130" height="80" rx="12" class="box-deep"/>
+  <text x="85" y="142" text-anchor="middle" font-weight="700" font-size="14">State</text>
+  <text x="85" y="162" text-anchor="middle" font-size="11.5" class="t-soft">data React holds</text>
+  <rect x="210" y="110" width="150" height="80" rx="12" class="box-accent"/>
+  <text x="285" y="138" text-anchor="middle" font-weight="700" font-size="14">Component fn</text>
+  <text x="285" y="158" text-anchor="middle" font-size="11.5" class="t-soft">runs again (render)</text>
+  <text x="285" y="175" text-anchor="middle" font-size="11" class="t-mute">must be pure</text>
+  <rect x="420" y="110" width="150" height="80" rx="12" class="box-purple"/>
+  <text x="495" y="138" text-anchor="middle" font-weight="700" font-size="14">New JSX tree</text>
+  <text x="495" y="158" text-anchor="middle" font-size="11.5" class="t-soft">a "description" of UI</text>
+  <text x="495" y="175" text-anchor="middle" font-size="11" class="t-mute">diffed against the last</text>
+  <rect x="630" y="110" width="130" height="80" rx="12" class="box-ok"/>
+  <text x="695" y="142" text-anchor="middle" font-weight="700" font-size="14">DOM</text>
+  <text x="695" y="162" text-anchor="middle" font-size="11.5" class="t-soft">only diffs applied</text>
+  <line x1="152" y1="150" x2="206" y2="150" class="ln-accent" marker-end="url(#r1)"/>
+  <line x1="362" y1="150" x2="416" y2="150" class="ln-accent" marker-end="url(#r1)"/>
+  <line x1="572" y1="150" x2="626" y2="150" class="ln-accent" marker-end="url(#r1)"/>
+  <path d="M695 192 C 695 270, 85 270, 85 194" class="ln-accent ln-dash" marker-end="url(#r1)"/>
+  <text x="390" y="262" text-anchor="middle" font-size="12.5">User clicks → event handler calls setState(newValue) → next round</text>
+  <text x="390" y="40" text-anchor="middle" font-size="13" class="t-soft">You own two things: ① a pure function from state to UI  ② updating state in events</text>
+  <text x="390" y="62" text-anchor="middle" font-size="13" class="t-soft">"Diff and patch the DOM" is entirely React's job</text>
+</svg>
+</div>
+<figcaption>React's update loop. In React terms, the middle steps are render and reconciliation; the last is commit.</figcaption>
+</figure>
+
+<div class="callout analogy">
+  <span class="callout-title">Analogy: a template engine that re-runs itself</span>
+  <p>If you've written server templates (JSP, Jinja, Go templates), a component is a lot like a template: data in, HTML out. The difference: a server template renders once; React's "template" is <em>automatically re-run</em> when data changes, and only the differences are applied to the page, without a full reload.</p>
+  <p><strong>Where it breaks:</strong> templates can often run side effects like queries freely; React requires component functions to be <strong>pure</strong> (same inputs → same output, no changes to the outside world), because React may call them at any time, any number of times.</p>
+</div>
+
+<h2 id="components">Components, JSX and props</h2>
+
+<script type="text/plain" class="code" data-lang="tsx" data-title="src/components/BookmarkList.tsx">
+type Bookmark = { id: string; url: string; title: string; tags: string[] };
+
+// A component = a function returning JSX, capitalized name
+function BookmarkCard({ bookmark }: { bookmark: Bookmark }) {
+  return (
+    <li className="rounded border p-3">
+      <a href={bookmark.url}>{bookmark.title}</a>
+      <span className="text-sm text-zinc-500"> · {bookmark.tags.join(", ")}</span>
+    </li>
+  );
+}
+
+export function BookmarkList({ items }: { items: Bookmark[] }) {
+  if (items.length === 0) return <p>No bookmarks yet.</p>;   // conditional rendering is a plain if
+  return (
+    <ul className="space-y-2">
+      {items.map((b) => (
+        <BookmarkCard key={b.id} bookmark={b} />      // list rendering is a plain map
+      ))}
+    </ul>
+  );
+}
+</script>
+
+<ul>
+  <li><strong>JSX</strong> looks like HTML but compiles to ordinary function calls (roughly <code>jsx("li", { className: ..., children: ... })</code>) that produce a plain JS object describing the UI. So you can put any expression inside <code>{}</code> and use <code>if</code> and <code>map</code> for conditions and loops — no template language.</li>
+  <li><strong>props</strong> are arguments a parent passes to a child; <strong>read-only</strong> for the child. Data always flows downward.</li>
+  <li><strong><code>key</code></strong> tells React "which item is which" in a list. It must be stable and unique (use the DB id). Using the array index as the key causes state mix-ups on insert, delete or sort (e.g. input text jumping to another row).</li>
+</ul>
+
+<h2 id="state">State: why plain variables don't work <span class="badge deep">Deep</span></h2>
+
+<script type="text/plain" class="code" data-lang="tsx">
+import { useState } from "react";
+
+function Counter() {
+  let plain = 0;                           // reset to 0 on every render (every call)
+  const [count, setCount] = useState(0);   // kept by React across renders
+
+  return (
+    <button onClick={() => { plain++; setCount(count + 1); }}>
+      plain: {plain} · count: {count}
+    </button>
+  );
+}
+</script>
+
+<p>On click: <code>plain++</code> changes a local variable in the current call but triggers nothing; <code>setCount</code> tells React "state changed", React schedules a new render and calls <code>Counter()</code> again. In the new call, <code>plain</code> starts at 0 again, while <code>useState</code> returns the new value 1 that React stored.</p>
+
+<h3>Every render is a "snapshot"</h3>
+
+<p>This is the biggest trap, and it's Chapter 03's closures showing up in React:</p>
+
+<script type="text/plain" class="code" data-lang="tsx">
+function Counter() {
+  const [count, setCount] = useState(0);
+  function addThree() {
+    setCount(count + 1);   // count is this render's snapshot: 0 → request 1
+    setCount(count + 1);   // still 0                      → request 1
+    setCount(count + 1);   // still 0                      → request 1
+  }                        // result: 1, not 3
+  // Right: functional updates compute from the latest value
+  function addThreeFixed() {
+    setCount((c) => c + 1);
+    setCount((c) => c + 1);
+    setCount((c) => c + 1); // result: 3
+  }
+  return <button onClick={addThreeFixed}>{count}</button>;
+}
+</script>
+
+<p><code>setCount</code> doesn't change the <code>count</code> variable — it's a <code>const</code> belonging to this render's snapshot. The new value only appears in the snapshot of the <em>next</em> render.</p>
+
+<h3>Objects and arrays: always create new ones</h3>
+
+<p>Recall Chapter 03: React compares references to decide whether state changed.</p>
+
+<script type="text/plain" class="code" data-lang="tsx">
+// ✗ Mutating the original array: same reference, React sees no change
+items.push(newItem);
+setItems(items);
+
+// ✓ Create new arrays / objects
+setItems([...items, newItem]);                                        // add
+setItems(items.filter((b) => b.id !== id));                           // remove
+setItems(items.map((b) => (b.id === id ? { ...b, title } : b)));      // update one
+</script>
+
+<h2 id="rerender">Who re-renders? <span class="badge deep">Deep</span></h2>
+
+<p>Here is the component tree of a LinkNote page. Click the buttons to change state in different places and watch which component functions run again (badge counters):</p>
+
+<div data-widget="react-render"></div>
+
+<p>Three rules fall out of the demo:</p>
+<ol class="steps">
+  <li><strong>Re-rendering starts where the state lives.</strong> Its parents and siblings are unaffected.</li>
+  <li><strong>By default, when a component re-renders, every child it renders re-renders too</strong>, whether or not their props changed. That's usually fine — re-running functions is cheap, and React only writes real differences to the DOM.</li>
+  <li><strong><code>memo</code> lets a child skip rendering when its props haven't changed.</strong> The React Compiler (1.0 released October 2025) does similar memoization automatically at build time, so new projects rarely need hand-written <code>useMemo</code>, <code>useCallback</code> or <code>memo</code>.</li>
+</ol>
+
+<h3>Two key design principles</h3>
+
+<p><strong>Lifting state up:</strong> when two components need the same state (say SearchBox's input must filter List), move the state to their nearest common parent and pass it down via props — the value to one, the setter to the other.</p>
+
+<p><strong>If you can compute it, don't store it (derived state):</strong> the most common redundancy in agent code.</p>
+
+<script type="text/plain" class="code" data-lang="tsx">
+// ✗ Storing "derived data" as state and syncing it with an effect — an extra render, easy to get out of sync
+const [query, setQuery] = useState("");
+const [filtered, setFiltered] = useState<Bookmark[]>([]);
+useEffect(() => {
+  setFiltered(items.filter((b) => b.title.includes(query)));
+}, [items, query]);
+
+// ✓ Just compute it during render
+const [query2, setQuery2] = useState("");
+const filtered2 = items.filter((b) => b.title.includes(query2));
+</script>
+
+<h2 id="effects">Effects: syncing with the outside world <span class="badge deep">Deep</span></h2>
+
+<p>If component functions must be pure, what about subscribing to a WebSocket, calling browser APIs, or setting timers? That's what <code>useEffect</code> is for: <strong>after the render is committed to the screen, keep the component in sync with some external system</strong>.</p>
+
+<script type="text/plain" class="code" data-lang="tsx">
+useEffect(() => {
+  const ws = new WebSocket(`wss://linknote.dev/live?room=${roomId}`);   // start syncing
+  ws.onmessage = (e) => setMessages((m) => [...m, JSON.parse(e.data)]);
+  return () => ws.close();                                               // cleanup: close the old connection
+}, [roomId]);   // dependency array: re-sync only when roomId changes
+</script>
+
+<p>Execution rules: run after the first render; after each later render, compare every item in the dependency array (with <code>Object.is</code>, i.e. by reference); if any changed, run the previous cleanup first, then the new effect.</p>
+
+<h3>How the infinite loop forms</h3>
+
+<script type="text/plain" class="code" data-lang="tsx">
+function LinkList({ userId }: { userId: string }) {
+  const [links, setLinks] = useState<Bookmark[]>([]);
+  const options = { userId, limit: 20 };           // a new object on every render
+
+  useEffect(() => {
+    fetch("/api/links?" + new URLSearchParams({ userId: options.userId }))
+      .then((r) => r.json())
+      .then(setLinks);                             // ② setting state → re-render
+  }, [options]);                                   // ③ options is a new reference each time → effect runs again
+}                                                   // → back to ②, forever
+</script>
+
+<p>The model: <em>render → effect runs → setState → render → dependency "changed" → effect runs → …</em>. Putting objects, arrays or functions created during render into the dependency array is the most common cause.</p>
+
+<div class="callout tip">
+  <span class="callout-title">Effects run twice in development</span>
+  <p>Under StrictMode in development, React deliberately mounts → unmounts → remounts a component once to expose effects missing a cleanup. If you see a request fire twice, don't rush to "fix" it — it's intentional and doesn't happen in production.</p>
+</div>
+
+<h3>You might not need an effect</h3>
+
+<p>React's docs have a whole page called "You Might Not Need an Effect". By scenario:</p>
+
+<table>
+  <thead><tr><th>You want to</th><th>Don't</th><th>Do</th></tr></thead>
+  <tbody>
+    <tr><td>Compute a value from props/state</td><td>Effect + setState</td><td>Compute during render</td></tr>
+    <tr><td>Respond to a user action (submit, click)</td><td>Set a flag and have an effect watch it</td><td>Do it in the event handler</td></tr>
+    <tr><td>Fetch data from the server</td><td>Hand-written effect + fetch</td><td>Framework loaders / Server Components / TanStack Query</td></tr>
+    <tr><td>Reset state when a prop changes</td><td>setState in an effect</td><td>Give the component a new <code>key</code></td></tr>
+    <tr><td>Subscribe to an external system (WebSocket, browser events)</td><td>—</td><td><strong>This is what effects are actually for</strong></td></tr>
+  </tbody>
+</table>
+
+<h2 id="data">Data fetching: don't hand-roll it <span class="badge use">Use</span></h2>
+
+<p>Hand-written <code>useEffect + fetch</code> looks simple, but you'd also need loading state, error state, races (switch filters quickly and an older request returns after a newer one, overwriting fresh data), caching, dedupe, retries, refetch on window focus… That's exactly what <strong>TanStack Query</strong> solves:</p>
+
+<script type="text/plain" class="code" data-lang="tsx">
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+
+function LinkList({ tag }: { tag: string }) {
+  const { data, isPending, error } = useQuery({
+    queryKey: ["links", { tag }],               // cache key: a different tag is a different cache entry
+    queryFn: () => fetchLinks({ tag }),         // races, dedupe, retries handled by the library
+  });
+  if (isPending) return <Skeleton />;
+  if (error) return <ErrorState retry />;
+  return <BookmarkList items={data} />;
+}
+
+function AddLinkButton() {
+  const qc = useQueryClient();
+  const add = useMutation({
+    mutationFn: createLink,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["links"] }), // invalidate related cache → auto refetch
+  });
+  return <button onClick={() => add.mutate({ url: "https://react.dev" })}>Save</button>;
+}
+</script>
+
+<p>The idea behind it is worth remembering: <strong>server data isn't your "state"; it's a "cache" of remote data</strong>. What you care about is "when does it go stale and when is it refetched", not "how do I put it into useState". With full-stack frameworks, much of this fetching moves to server components or route loaders (Chapter 07); the idea is the same.</p>
+
+<h2 id="forms">Forms and React 19 Actions <span class="badge use">Use</span></h2>
+
+<p>React 19 brings form handling back to how HTML works natively: pass a function to <code>&lt;form action&gt;</code> and React handles submission, pending state and errors.</p>
+
+<script type="text/plain" class="code" data-lang="tsx" data-title="LinkNote: add-link form">
+import { useActionState } from "react";
+
+type FormState = { error?: string; ok?: boolean };
+
+async function addLink(_prev: FormState, formData: FormData): Promise<FormState> {
+  const url = String(formData.get("url") ?? "");
+  const res = await fetch("/api/links", { method: "POST", body: JSON.stringify({ url }) });
+  return res.ok ? { ok: true } : { error: "Save failed — please check the URL" };
+}
+
+export function AddLinkForm() {
+  const [state, formAction, isPending] = useActionState(addLink, {});
+  return (
+    <form action={formAction}>
+      <label htmlFor="url">URL</label>
+      <input id="url" name="url" type="url" required />
+      <button type="submit" disabled={isPending}>{isPending ? "Saving…" : "Save"}</button>
+      {state.error && <p role="alert">{state.error}</p>}
+    </form>
+  );
+}
+</script>
+
+<p>Related hooks: <code>useOptimistic</code> (show the result before the server confirms, roll back on failure — an "optimistic update") and <code>useFormStatus</code>. In frameworks like Next.js, the action can be a function that runs on the server (a Server Action / Server Function, Chapters 07 and 08).</p>
+
+<p>Two terms: a <strong>controlled input</strong> has its value driven by state, calling setState on every keystroke — for live validation or dependent fields; an <strong>uncontrolled input</strong> lets the browser keep the value and you read it from FormData on submit — simpler, fine for most forms.</p>
+
+<h2 id="hooks">Rules of hooks and custom hooks</h2>
+
+<p>Every function starting with <code>use</code> is a hook. Two hard rules: <strong>only call them at the top level of a component or custom hook</strong> (not inside ifs, loops or nested functions); <strong>only call them from React functions</strong>. React identifies which state belongs to which hook by call order. The <code>react-hooks</code> lint rule checks this automatically.</p>
+
+<p>A custom hook bundles several hook calls into a function to reuse <em>logic</em> (not the state itself — each caller gets its own):</p>
+
+<script type="text/plain" class="code" data-lang="tsx">
+function useDebounced<T>(value: T, ms = 300): T {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const id = setTimeout(() => setDebounced(value), ms);
+    return () => clearTimeout(id);          // cancel the previous timer when value changes again
+  }, [value, ms]);
+  return debounced;
+}
+// usage: query updates on every keystroke, but the search only fires 300ms after typing stops
+const debouncedQuery = useDebounced(query);
+</script>
+
+<h2 id="where-state">Where should data live?</h2>
+
+<p>"State management" is the most-discussed topic in the React world. In practice, if you ask these questions in order, you usually don't need a state library at all:</p>
+
+<table>
+  <thead><tr><th>Nature of the data</th><th>Where it lives</th><th>LinkNote example</th></tr></thead>
+  <tbody>
+    <tr><td>Used by one component only</td><td>Local <code>useState</code></td><td>Whether a dropdown is open</td></tr>
+    <tr><td>Shared by a few neighbors</td><td>Lifted to the common parent</td><td>Search query and the result list</td></tr>
+    <tr><td>Should survive refresh and be shareable</td><td><strong>URL query params</strong></td><td>Current tag filter, page number</td></tr>
+    <tr><td>Comes from the server</td><td><strong>Server cache</strong> (TanStack Query / framework loaders)</td><td>Bookmark list, user profile</td></tr>
+    <tr><td>Read deep in the tree, rarely changes</td><td>Context</td><td>Theme, current user</td></tr>
+    <tr><td>Complex, cross-page, purely client-side</td><td>A store such as Zustand</td><td>Offline drafts, complex editor state</td></tr>
+  </tbody>
+</table>
+
+<div class="callout tip">
+  <span class="callout-title">A rule of thumb</span>
+  <p>Many people think they need "global state" when what they actually need is <strong>server cache</strong> (data from the backend) or <strong>URL state</strong> (filters, pagination, selected tab). Once those two are split off, very little client state remains.</p>
+</div>
+
+<div class="callout project">
+  <span class="callout-title">Where this lands in LinkNote</span>
+  <p>List page: tag filter in the URL (<code>?tag=react</code>); the bookmark list in the server cache; search input as local state + debounce; "add link" as a form Action with optimistic update; the live "summary generating" progress via an effect subscribing to SSE (a genuine use of effects).</p>
+</div>
+
+<div class="callout agent">
+  <span class="callout-title">Tell the agent</span>
+  <div class="compare">
+    <div class="head bad">Vague</div><div class="head good">Precise</div>
+    <div class="bad">"Add tag filtering to the list page."</div>
+    <div class="good">"Keep the tag filter in the URL query param <code>tag</code> so it survives refresh and shared links. Compute the filtered result during render — don't store it in separate state or sync it with useEffect. Keep using the existing useQuery for the list and add tag to the queryKey."</div>
+    <div class="row-sep"></div>
+    <div class="bad">"The page keeps re-requesting, fix it."</div>
+    <div class="good">"LinkList's useEffect depends on an options object recreated every render, causing a request loop. Switch the fetching to TanStack Query, delete the effect, and explain under which conditions the request fires after the change."</div>
+  </div>
+  <p>This chapter's vocabulary: lift state up, derived state, controlled / uncontrolled input, <code>key</code>, effect cleanup, dependency array, server state vs client state, optimistic update, memoization.</p>
+</div>
+
+<div class="callout interview">
+  <span class="callout-title">Interview corner</span>
+  <ul>
+    <li><strong>What triggers a re-render?</strong> A component's own state changing, its parent re-rendering, or a consumed Context changing. A props change isn't an independent cause — it always comes from a parent re-render.</li>
+    <li><strong>Why do lists need keys? Why not the index?</strong> Keys let React match old and new elements when diffing; with indexes, inserting or sorting mismatches elements so local state and DOM get reused for the wrong item.</li>
+    <li><strong>How does useEffect's dependency array work?</strong> After each render, compare item by item with Object.is; if changed, clean up then run. An empty array = run once on mount.</li>
+    <li><strong>What is the virtual DOM?</strong> The object tree described by returned JSX; React diffs old and new trees to compute minimal DOM operations. The point is "declarative + efficient batched updates", not "virtual DOM is always faster than direct DOM manipulation".</li>
+  </ul>
+</div>
+
+<h2 id="check">Self-check</h2>
+
+<details class="check">
+  <summary>1. The parent <code>Page</code> updates a clock state every second; its child <code>ExpensiveChart</code> gets identical props every time. Without the React Compiler or memo, does Chart render every second? What structural change is better?</summary>
+  <div class="answer"><p>Yes — a parent re-render re-renders all its children. Better than memo: <strong>push the clock state down</strong> into its own <code>Clock</code> component so the state only affects what needs it; Chart is then no longer a child of the component that owns the clock state.</p></div>
+</details>
+
+<details class="check">
+  <summary>2. This code wants to clear a comment draft when <code>linkId</code> changes: <code>useEffect(() =&gt; setDraft(""), [linkId])</code>. What's wrong, and what's better?</summary>
+  <div class="answer"><p>It first renders once with the stale draft, then renders again after the effect — a flicker and an extra render. Better: in the parent, give the comment component <code>key={linkId}</code>. When the key changes, React treats it as a brand-new component and the state resets naturally.</p></div>
+</details>
+
+<details class="check">
+  <summary>3. A user quickly types "r", "re", "rea" into a search box, each firing a request from an effect. The response for "re" arrives last. What does the UI show, and how do you prevent it?</summary>
+  <div class="answer"><p>It shows results for "re", mismatching the "rea" in the box — a race. You can mark stale requests in the effect cleanup or cancel them with AbortController; better, use TanStack Query (managed by queryKey, only the current key's result is used) plus debounce.</p></div>
+</details>
+
+</article></main>
+</body>
+</html>

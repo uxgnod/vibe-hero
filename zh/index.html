@@ -1,0 +1,296 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>导读：一次范式转换 · Vibe Hero</title>
+<meta name="description" content="从其他语言转型到 TypeScript 全栈 AI 开发：先弄清楚变的是什么、要学到多深、按什么顺序学。">
+<!-- seo -->
+<link rel="canonical" href="https://uxgnod.github.io/vibe-hero/zh/index.html">
+<link rel="alternate" hreflang="zh-CN" href="https://uxgnod.github.io/vibe-hero/zh/index.html">
+<link rel="alternate" hreflang="en" href="https://uxgnod.github.io/vibe-hero/en/index.html">
+<link rel="alternate" hreflang="x-default" href="https://uxgnod.github.io/vibe-hero/en/index.html">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Vibe Hero">
+<meta property="og:title" content="导读：一次范式转换 · Vibe Hero">
+<meta property="og:description" content="从其他语言转型到 TypeScript 全栈 AI 开发：先弄清楚变的是什么、要学到多深、按什么顺序学。">
+<meta property="og:url" content="https://uxgnod.github.io/vibe-hero/zh/index.html">
+<meta property="og:image" content="https://uxgnod.github.io/vibe-hero/assets/og-image.png">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:locale:alternate" content="en_US">
+<meta name="twitter:card" content="summary_large_image">
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "TechArticle", "headline": "导读：一次范式转换", "description": "从其他语言转型到 TypeScript 全栈 AI 开发：先弄清楚变的是什么、要学到多深、按什么顺序学。", "inLanguage": "zh-CN", "url": "https://uxgnod.github.io/vibe-hero/zh/index.html", "image": "https://uxgnod.github.io/vibe-hero/assets/og-image.png", "dateModified": "2026-09-26", "author": {"@type": "Person", "name": "uxgnod", "url": "https://github.com/uxgnod"}, "isPartOf": {"@type": "WebSite", "name": "Vibe Hero", "url": "https://uxgnod.github.io/vibe-hero/"}}</script>
+<link rel="icon" href="../assets/favicon.svg">
+<link rel="stylesheet" href="../assets/style.css">
+<script>try{var t=localStorage.getItem('vh-theme');if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+<script defer src="../assets/app.js"></script>
+<script defer src="../assets/widgets.js"></script>
+</head>
+<body>
+<main class="content"><article class="doc">
+
+<p class="eyebrow">CHAPTER 00 · 导读</p>
+<h1>一次范式转换：从“写代码的人”到“定义并验证系统的人”</h1>
+<p class="lead">你已经会编程。这套教程不教你“编程”，而是帮你把已有的工程直觉迁移到 TypeScript 全栈生态，同时学会用 Coding Agent（编码智能体）替你写大部分代码，而你牢牢掌控方向和质量。</p>
+<div class="meta"><span>⏱ 约 25 分钟</span><span>适合：有 Java / Go / Python / C# / C++ 等经验，对 TS 与前端零基础</span></div>
+
+<div class="goals">
+  <div class="goals-title">读完本章，你应该能够：</div>
+  <ul>
+    <li>说出转到 TS 全栈时<strong>真正变化的三个默认假设</strong>，而不只是“语法不同”。</li>
+    <li>用“原理 / 会用 / 知道”三档，判断任意一个新技术名词该学到多深。</li>
+    <li>理解贯穿全书的练习项目 LinkNote，并为自己选一条学习路线。</li>
+  </ul>
+</div>
+
+<h2 id="question">一个你很可能会遇到的困惑</h2>
+
+<div class="callout question">
+  <span class="callout-title">开场问题</span>
+  <p>一个写了多年后端的工程师，打开一个由 Agent 生成的 Next.js 项目。每一行语法大致都认得：<code>const</code>、<code>async</code>、函数、对象……但他依然说不清：<strong>这个文件里的代码到底在服务器上跑，还是在用户浏览器里跑？为什么改了一个变量，页面没有更新？为什么 Agent 说“这里要加 <code>'use client'</code>”？</strong></p>
+</div>
+
+<p><strong>答案方向：</strong>卡住他的不是语法，而是三个“默认假设”被悄悄换掉了。只要把这三个假设换过来，大部分困惑会同时消失：</p>
+
+<ol class="steps">
+  <li><strong>代码跑在哪里，不再是一个固定答案。</strong>在 Java 或 Go 的世界里，你的代码跑在“服务器”上，浏览器只是显示结果。在 TS 全栈世界里，<em>同一种语言、同一个项目、甚至同一个文件夹</em>中的代码，有的在构建时运行，有的在服务器上运行，有的被打包发给浏览器运行，有的跑在全球几百个边缘机房里。你必须随时知道“这段代码的运行位置”，因为它决定了能访问什么（数据库？用户的鼠标点击？）和不能泄露什么（密钥）。</li>
+  <li><strong>界面不再是“命令式地改”，而是“声明式地算”。</strong>你熟悉的是“收到事件 → 找到那个元素 → 修改它”。React 的模型是：<em>界面 = 函数(状态)</em>。你只改状态，框架负责重新计算界面并找出差异。改了一个普通变量而不是“状态”，界面当然不会动。</li>
+  <li><strong>写代码的主体变了。</strong>现在大部分实现代码可以由 Agent 生成。你的核心产出变成：清晰的意图、准确的约束、可验证的验收标准，以及对 Agent 产出的审查。这要求你拥有<em>足够精确的词汇</em>去描述需求，也要求你<em>懂到足以发现错误</em>的程度。</li>
+</ol>
+
+<p>接下来的十五章，基本就是在把这三个假设逐一拆开、换成新的心智模型。</p>
+
+<h2 id="analogy">类比：当年从汇编 / C 走向面向对象，发生了什么？</h2>
+
+<p>你可能经历过，或者至少听说过那次转换。它和今天这次转换有一个非常有用的共同点，也有一个关键的不同点。</p>
+
+<figure class="diagram">
+<div class="diagram-scroll">
+<svg viewBox="0 0 780 360" role="img" aria-label="抽象阶梯：从汇编到 Agent 辅助开发">
+  <defs>
+    <marker id="ar0" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="ar-accent"/></marker>
+  </defs>
+  <text x="390" y="22" text-anchor="middle" font-size="13" class="t-mute">每上一级：你写的更少、表达的更多 —— 但出问题时，仍要能看懂下一级</text>
+  <g font-size="13">
+    <rect x="10" y="270" width="140" height="74" rx="8" class="box-soft"/>
+    <text x="80" y="294" text-anchor="middle" font-weight="700">汇编</text>
+    <text x="80" y="314" text-anchor="middle" font-size="11.5" class="t-soft">你描述：寄存器、跳转</text>
+    <text x="80" y="332" text-anchor="middle" font-size="11.5" class="t-mute">机器替你：几乎没有</text>
+
+    <rect x="165" y="215" width="140" height="74" rx="8" class="box-soft"/>
+    <text x="235" y="239" text-anchor="middle" font-weight="700">C</text>
+    <text x="235" y="259" text-anchor="middle" font-size="11.5" class="t-soft">你描述：函数、指针</text>
+    <text x="235" y="277" text-anchor="middle" font-size="11.5" class="t-mute">编译器替你：分配寄存器</text>
+
+    <rect x="320" y="160" width="140" height="74" rx="8" class="box-soft"/>
+    <text x="390" y="184" text-anchor="middle" font-weight="700">面向对象 / GC</text>
+    <text x="390" y="204" text-anchor="middle" font-size="11.5" class="t-soft">你描述：对象、接口</text>
+    <text x="390" y="222" text-anchor="middle" font-size="11.5" class="t-mute">运行时替你：管内存</text>
+
+    <rect x="475" y="105" width="140" height="74" rx="8" class="box-accent"/>
+    <text x="545" y="129" text-anchor="middle" font-weight="700">声明式框架</text>
+    <text x="545" y="149" text-anchor="middle" font-size="11.5" class="t-soft">你描述：状态、组件</text>
+    <text x="545" y="167" text-anchor="middle" font-size="11.5" class="t-mute">框架替你：更新界面</text>
+
+    <rect x="630" y="50" width="140" height="74" rx="8" class="box-deep"/>
+    <text x="700" y="74" text-anchor="middle" font-weight="700">Agent 辅助</text>
+    <text x="700" y="94" text-anchor="middle" font-size="11.5" class="t-soft">你描述：意图、约束、验收</text>
+    <text x="700" y="112" text-anchor="middle" font-size="11.5" class="t-mute">Agent 替你：写实现</text>
+  </g>
+  <path d="M80 262 C 120 240, 180 225, 225 208" class="ln-accent ln-dash" marker-end="url(#ar0)"/>
+  <path d="M240 207 C 280 190, 330 170, 380 153" class="ln-accent ln-dash" marker-end="url(#ar0)"/>
+  <path d="M395 152 C 440 135, 490 115, 535 98" class="ln-accent ln-dash" marker-end="url(#ar0)"/>
+  <path d="M550 97 C 590 80, 640 64, 690 44" class="ln-accent ln-dash" marker-end="url(#ar0)"/>
+</svg>
+</div>
+<figcaption>抽象阶梯。每一级都把一部分“怎么做”交给了工具；你留下的是“做什么”以及对结果的判断。</figcaption>
+</figure>
+
+<p><strong>共同点：抽象上移，但底层知识从未失效。</strong>C 程序员不用再手动分配寄存器，但真正懂栈帧和内存布局的人，调试段错误的速度是别人的十倍。Java 程序员不用手动释放内存，但不懂引用和 GC 的人会写出内存泄漏。同理，今天你可以让 Agent 写出一个完整的 React 组件，但如果你不理解“状态变化 → 重新渲染”这条规则，你就看不出它为什么会无限循环地请求接口。</p>
+
+<p><strong>关键的不同：编译器是确定性的，Agent 不是。</strong>同一段 C 代码，每次编译结果都一样；编译器极少出错，所以你可以几乎完全信任它。Agent 则是概率性的：同一句需求，两次可能得到两种实现；它可能“自信地”写错，也可能悄悄改了你没让它改的地方。这意味着这次转换比当年多了一个核心技能：<strong>验证</strong>。你需要让 Agent 的产出变得可检查（类型、测试、截图、日志），并且自己具备判断力。</p>
+
+<div class="callout analogy">
+  <span class="callout-title">类比的边界</span>
+  <p>“Agent 就像一个更高级的编译器”这个说法只在“抽象上移”这一点上成立。在“可靠性”上它更像一个<strong>能力很强、速度极快、但刚入职、不了解你项目上下文的同事</strong>：你需要给它清楚的需求、项目约定和验收标准，并审查它的代码。这个同事不会累、不会不耐烦，但也不会主动告诉你“我其实没看懂需求”。</p>
+</div>
+
+<h2 id="depth">三档深度：什么要懂原理，什么会用就行</h2>
+
+<p>TS 生态的名词数量非常多，逐个学透不现实，也没必要。这套教程给每个知识点标注一个深度，你可以据此分配精力：</p>
+
+<div class="cards">
+  <div class="card"><h4><span class="badge deep">原理</span></h4><p><strong>必须理解内部机制。</strong>这是 Agent 出错时你能发现、能定位、能说清楚“为什么错”的依据。数量少，但每一个都要能画图、能预测结果。</p></div>
+  <div class="card"><h4><span class="badge use">会用</span></h4><p><strong>能熟练使用、能读懂、能准确命名。</strong>这是你和 Agent 对话的词汇表。不必知道源码怎么实现，但要知道它解决什么问题、常见用法和坑。</p></div>
+  <div class="card"><h4><span class="badge aware">知道</span></h4><p><strong>知道它存在、解决什么问题、什么时候该考虑它。</strong>这是做技术选型和系统设计时的视野。需要时再让 Agent 帮你深入。</p></div>
+</div>
+
+<p>下表是整个教程的“精力分配表”。第一次看不必全懂——每个名词在后续章节首次出现时都会解释。</p>
+
+<table>
+  <thead><tr><th>主题</th><th>深度</th><th>为什么是这个深度</th><th>章节</th></tr></thead>
+  <tbody>
+    <tr><td>事件循环、Promise、async/await</td><td><span class="badge deep">原理</span></td><td>“顺序不对”“卡住”“竞态”类 bug 的根源；面试必问</td><td>03</td></tr>
+    <tr><td>TS 类型系统：结构化类型、收窄、泛型、类型擦除</td><td><span class="badge deep">原理</span></td><td>读懂 Agent 写的类型；知道“类型在运行时不存在”，所以边界必须校验</td><td>04</td></tr>
+    <tr><td>HTTP、Cookie、CORS、缓存</td><td><span class="badge deep">原理</span></td><td>鉴权、跨域、缓存失效这些问题 Agent 最容易“修一处坏一处”</td><td>05</td></tr>
+    <tr><td>React 渲染模型：状态 → 重渲染、Effect</td><td><span class="badge deep">原理</span></td><td>Agent 最常见的错误之一就是滥用 <code>useEffect</code></td><td>06</td></tr>
+    <tr><td>服务端 / 客户端边界：SSR、RSC、水合</td><td><span class="badge deep">原理</span></td><td>决定代码在哪跑、数据怎么流、密钥会不会泄露</td><td>07</td></tr>
+    <tr><td>LLM 调用：token、上下文、流式、工具调用</td><td><span class="badge deep">原理</span></td><td>AI 功能的成本、延迟、可靠性都由它决定</td><td>11</td></tr>
+    <tr><td>Agent 循环与上下文管理</td><td><span class="badge deep">原理</span></td><td>既是你要构建的东西，也是你每天使用的工具</td><td>12、13</td></tr>
+    <tr><td>Next.js / TanStack Start 的路由与数据加载</td><td><span class="badge use">会用</span></td><td>日常开发的主体；API 细节可以查</td><td>07</td></tr>
+    <tr><td>Zod、Drizzle / Prisma、TanStack Query、Hono</td><td><span class="badge use">会用</span></td><td>高频库，需要能读懂并说出名字</td><td>08</td></tr>
+    <tr><td>Tailwind CSS、shadcn/ui</td><td><span class="badge use">会用</span></td><td>Agent 生成 UI 的默认组合，要能读、能调</td><td>05</td></tr>
+    <tr><td>Vitest、Playwright、类型检查、CI</td><td><span class="badge use">会用</span></td><td>你验证 Agent 产出的主要武器</td><td>10</td></tr>
+    <tr><td>Vercel / Cloudflare / 自托管部署</td><td><span class="badge use">会用</span></td><td>至少熟练一条，另外两条知道差异</td><td>09</td></tr>
+    <tr><td>打包器内部（Vite、Rolldown、Turbopack）</td><td><span class="badge aware">知道</span></td><td>知道它们是什么即可，极少需要你亲自调</td><td>01</td></tr>
+    <tr><td>Monorepo 工具、各种状态管理库、动画库</td><td><span class="badge aware">知道</span></td><td>遇到具体需求再引入</td><td>10</td></tr>
+  </tbody>
+</table>
+
+<div class="callout tip">
+  <span class="callout-title">一个判断方法</span>
+  <p>拿不准一个新名词该学多深时，问自己：<strong>“如果 Agent 在这里写错了，我需要看懂到什么程度才能发现？”</strong>如果错误会静默发生、后果严重（数据错乱、安全漏洞、性能雪崩），就往“原理”靠；如果错误会立刻以报错形式暴露，“会用”就够了。</p>
+</div>
+
+<h2 id="linknote">贯穿项目：LinkNote</h2>
+
+<p>为了避免每章讲一堆互不相关的例子，整套教程围绕同一个小应用展开。你每学一块概念，都会看到它在这个应用里具体落在哪里。</p>
+
+<div class="callout project">
+  <span class="callout-title">LinkNote —— 一个带 AI 摘要的链接收藏夹</span>
+  <ul>
+    <li>用户粘贴一个网址 → 服务器抓取网页 → LLM 生成摘要和标签（流式显示）。</li>
+    <li>列表页可以按标签筛选、搜索；每个收藏有状态：处理中 / 完成 / 失败。</li>
+    <li>“问我的收藏”：一个 Agent，能调用“搜索收藏”工具，回答“我上个月存的关于 React 的文章讲了什么？”</li>
+    <li>分别部署到 Vercel、Cloudflare 和一台自己的服务器上。</li>
+  </ul>
+</div>
+
+<figure class="diagram">
+<div class="diagram-scroll">
+<svg viewBox="0 0 780 250" role="img" aria-label="LinkNote 架构总览">
+  <defs><marker id="ar1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="ar-fill"/></marker></defs>
+  <rect x="10" y="70" width="150" height="110" rx="10" class="box-accent"/>
+  <text x="85" y="98" text-anchor="middle" font-weight="700" font-size="14">浏览器</text>
+  <text x="85" y="120" text-anchor="middle" font-size="11.5" class="t-soft">React 组件</text>
+  <text x="85" y="138" text-anchor="middle" font-size="11.5" class="t-soft">表单 · 列表 · 聊天框</text>
+  <text x="85" y="160" text-anchor="middle" font-size="11" class="t-mute">第 05–07 章</text>
+
+  <rect x="230" y="40" width="200" height="170" rx="10" class="box-purple"/>
+  <text x="330" y="66" text-anchor="middle" font-weight="700" font-size="14">服务器（TypeScript）</text>
+  <rect x="248" y="80" width="164" height="30" rx="6" class="box"/><text x="330" y="100" text-anchor="middle" font-size="12">路由 / 服务端函数</text>
+  <rect x="248" y="118" width="164" height="30" rx="6" class="box"/><text x="330" y="138" text-anchor="middle" font-size="12">Zod 校验 · 鉴权</text>
+  <rect x="248" y="156" width="164" height="30" rx="6" class="box"/><text x="330" y="176" text-anchor="middle" font-size="12">Agent 循环</text>
+  <text x="330" y="202" text-anchor="middle" font-size="11" class="t-mute">第 07–08、12 章</text>
+
+  <rect x="510" y="30" width="120" height="60" rx="10" class="box-ok"/>
+  <text x="570" y="56" text-anchor="middle" font-weight="700" font-size="13">数据库</text>
+  <text x="570" y="74" text-anchor="middle" font-size="11" class="t-mute">Postgres / D1</text>
+
+  <rect x="510" y="110" width="120" height="60" rx="10" class="box-deep"/>
+  <text x="570" y="136" text-anchor="middle" font-weight="700" font-size="13">LLM API</text>
+  <text x="570" y="154" text-anchor="middle" font-size="11" class="t-mute">第 11 章</text>
+
+  <rect x="510" y="190" width="120" height="50" rx="10" class="box-soft"/>
+  <text x="570" y="220" text-anchor="middle" font-size="12">外部网页</text>
+
+  <rect x="660" y="90" width="110" height="80" rx="10" class="box-use"/>
+  <text x="715" y="118" text-anchor="middle" font-weight="700" font-size="13">部署平台</text>
+  <text x="715" y="138" text-anchor="middle" font-size="11" class="t-soft">Vercel · CF</text>
+  <text x="715" y="154" text-anchor="middle" font-size="11" class="t-soft">自托管 · 第 09 章</text>
+
+  <line x1="162" y1="110" x2="226" y2="110" class="ln" marker-end="url(#ar1)"/>
+  <line x1="226" y1="140" x2="164" y2="140" class="ln ln-dash" marker-end="url(#ar1)"/>
+  <text x="194" y="102" text-anchor="middle" font-size="10.5" class="t-mute">请求</text>
+  <text x="194" y="156" text-anchor="middle" font-size="10.5" class="t-mute">HTML/流</text>
+  <line x1="432" y1="80" x2="506" y2="60" class="ln" marker-end="url(#ar1)"/>
+  <line x1="432" y1="140" x2="506" y2="140" class="ln" marker-end="url(#ar1)"/>
+  <line x1="432" y1="190" x2="506" y2="212" class="ln" marker-end="url(#ar1)"/>
+</svg>
+</div>
+<figcaption>LinkNote 的整体结构。浏览器、服务器、数据与 AI 服务各自是后续章节的主角；部署平台决定这些方块“物理上”在哪里运行。</figcaption>
+</figure>
+
+<p>你不需要现在就理解图里每个方块。读完第 08 章时，回来看这张图，每一个箭头你都应该能说出“这里传的是什么数据、用什么协议、在哪里做校验”。</p>
+
+<h2 id="map">学习地图与两条路线</h2>
+
+<div class="cards">
+  <a class="card" href="landscape.html"><h4>01 生态全景</h4><p>运行时、包管理、打包器、框架、平台分别是什么，彼此什么关系。</p></a>
+  <a class="card" href="setup.html"><h4>02 环境搭建</h4><p>Node、pnpm、编辑器、tsconfig，跑起第一个项目。</p></a>
+  <a class="card" href="javascript.html"><h4>03 JS 运行时</h4><p>事件循环、异步、闭包、模块——最重要的“原理”章。</p></a>
+  <a class="card" href="typescript.html"><h4>04 TS 类型系统</h4><p>结构化类型、收窄、泛型、在边界做运行时校验。</p></a>
+  <a class="card" href="web.html"><h4>05 Web 平台</h4><p>HTTP、浏览器、HTML/CSS、Tailwind。</p></a>
+  <a class="card" href="react.html"><h4>06 React</h4><p>UI = f(state)、组件、Hooks、何时不该用 Effect。</p></a>
+  <a class="card" href="rendering.html"><h4>07 渲染与元框架</h4><p>CSR/SSR/RSC、Next.js 与 TanStack Start。</p></a>
+  <a class="card" href="backend.html"><h4>08 后端与数据</h4><p>API、校验、ORM、鉴权、端到端类型安全。</p></a>
+  <a class="card" href="deploy.html"><h4>09 部署</h4><p>Vercel、Cloudflare、自托管的取舍。</p></a>
+  <a class="card" href="engineering.html"><h4>10 工程化</h4><p>测试、Lint、CI、Monorepo、可观测性。</p></a>
+  <a class="card" href="ai-apps.html"><h4>11 AI 应用</h4><p>LLM API、流式、结构化输出、工具调用、RAG。</p></a>
+  <a class="card" href="agents.html"><h4>12 Agent 与 Harness</h4><p>Agent 循环、MCP、Skills、上下文工程。</p></a>
+  <a class="card" href="workflow.html"><h4>13 驾驭 Coding Agent</h4><p>规格 → 计划 → 实现 → 验证的工作流与表达方法。</p></a>
+  <a class="card" href="system-design.html"><h4>14 系统设计与面试</h4><p>全栈系统设计框架与高频面试题。</p></a>
+  <a class="card" href="glossary.html"><h4>15 术语表与计划</h4><p>中英术语对照、8 周学习计划、检查清单。</p></a>
+</div>
+
+<h3>路线 A：急着做出东西（约 2 周）</h3>
+<p>00 → 01 → 02 → <strong>03</strong> → <strong>04</strong> → <strong>06</strong> → 07 → 08 → 11 → <strong>13</strong>。加粗的是不能跳的“原理”章。其余章节在遇到问题时回查。</p>
+
+<h3>路线 B：系统转型（约 8 周）</h3>
+<p>按顺序读完全部章节，每章完成“对 Agent 说”的练习，并在 LinkNote 上实际跑一遍。第 15 章有逐周计划。</p>
+
+<h2 id="how">怎么读这套教程</h2>
+
+<p>每章的结构基本一致，你可以把它当成一个学习闭环：</p>
+
+<ol class="steps">
+  <li><strong>先看开场问题。</strong>它是你现有知识解释不了的一个具体现象。试着先猜一个答案（不用写下来）。</li>
+  <li><strong>跟着机制走。</strong>重点看交互图：点“下一步”，观察每一步的中间状态，而不只是最终结果。</li>
+  <li><strong>回到 LinkNote。</strong>看这个概念在真实项目里长什么样。</li>
+  <li><strong>练习“对 Agent 怎么说”。</strong>每章都有“模糊说法 vs 精确说法”的对照。把精确说法用在你自己的 Agent 上，观察产出差异。</li>
+  <li><strong>做自检。</strong>自检题故意换了条件，考的是迁移，不是复述。答不上来就回到对应小节。</li>
+</ol>
+
+<div class="callout agent">
+  <span class="callout-title">对 Agent 怎么说 · 本章版</span>
+  <p>学习时，你可以把 Agent 当成随叫随到的助教，但要问“可验证”的问题：</p>
+  <div class="compare">
+    <div class="head bad">模糊</div><div class="head good">精确</div>
+    <div class="bad">“解释一下 React。”</div>
+    <div class="good">“我有 Go 后端经验。用一个计数器例子，逐步说明点击按钮后 React 内部发生了什么，包括哪些函数被重新执行。最后给我一个会让我预测错的变体。”</div>
+  </div>
+  <p>后者给出了<strong>你的背景</strong>、<strong>具体例子</strong>、<strong>要看的中间过程</strong>和<strong>检验方式</strong>——这四样东西，也正是后面你给 Agent 派开发任务时要提供的。</p>
+</div>
+
+<div class="callout warn">
+  <span class="callout-title">一个常见陷阱：把学习变成造系统</span>
+  <p>工程师转型时很容易先去“搭一个完美的学习环境”：先研究 Monorepo、先配十个 Lint 规则、先写一个自动化 Agent 工作流……然后三周过去，一个可用的页面都没做出来。本教程的建议是：<strong>先让 LinkNote 最简单的版本跑起来并部署上线</strong>，再在真实问题出现时回来学对应的工具。交付优先于准备。</p>
+</div>
+
+<h2 id="check">自检</h2>
+
+<details class="check">
+  <summary>1. 同事说：“有了 Agent，就不需要学事件循环这种底层东西了。”用本章的类比，指出这句话哪里对、哪里不对。</summary>
+  <div class="answer">
+    <p><strong>对的部分：</strong>抽象上移后，你确实不需要亲手写处理异步顺序的每一行代码，就像 Java 程序员不需要手动释放内存。</p>
+    <p><strong>不对的部分：</strong>底层知识在“排错与审查”时从未失效；而且 Agent 不是确定性的编译器，它会写错。异步顺序 bug 往往静默发生（数据偶尔错乱），按本章的判断方法，这类知识属于“原理”档。</p>
+  </div>
+</details>
+
+<details class="check">
+  <summary>2. 你第一次遇到 “Turbopack” 这个词。按三档深度，你会把它放在哪一档？依据是什么？</summary>
+  <div class="answer">
+    <p>“知道”档。它是一个打包器（把源代码变成浏览器能加载的文件的工具）。如果它出问题，通常会以明确的构建报错暴露，而不是静默产生错误业务数据；而且你几乎不需要自己配置它。知道它是什么、和 Vite 属于同一类工具就够了。</p>
+  </div>
+</details>
+
+<details class="check">
+  <summary>3. 一段代码读取了数据库密码并拼进页面。结合“第一个默认假设”，你首先应该问什么问题？</summary>
+  <div class="answer">
+    <p>“这段代码运行在哪里？”如果它会被打包发给浏览器（客户端组件），密码会直接泄露给所有用户；如果它只在服务器运行，风险在于渲染结果里是否带出了敏感数据。第 07 章会讲清楚如何判断和约束这条边界。</p>
+  </div>
+</details>
+
+</article></main>
+</body>
+</html>

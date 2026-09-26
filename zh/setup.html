@@ -1,0 +1,345 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>环境搭建与第一个项目 · Vibe Hero</title>
+<meta name="description" content="可复现的 TypeScript 开发环境：Node 版本管理、pnpm、编辑器、tsconfig、环境变量与第一个项目。">
+<!-- seo -->
+<link rel="canonical" href="https://uxgnod.github.io/vibe-hero/zh/setup.html">
+<link rel="alternate" hreflang="zh-CN" href="https://uxgnod.github.io/vibe-hero/zh/setup.html">
+<link rel="alternate" hreflang="en" href="https://uxgnod.github.io/vibe-hero/en/setup.html">
+<link rel="alternate" hreflang="x-default" href="https://uxgnod.github.io/vibe-hero/en/setup.html">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Vibe Hero">
+<meta property="og:title" content="环境搭建与第一个项目 · Vibe Hero">
+<meta property="og:description" content="可复现的 TypeScript 开发环境：Node 版本管理、pnpm、编辑器、tsconfig、环境变量与第一个项目。">
+<meta property="og:url" content="https://uxgnod.github.io/vibe-hero/zh/setup.html">
+<meta property="og:image" content="https://uxgnod.github.io/vibe-hero/assets/og-image.png">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:locale:alternate" content="en_US">
+<meta name="twitter:card" content="summary_large_image">
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "TechArticle", "headline": "环境搭建与第一个项目", "description": "可复现的 TypeScript 开发环境：Node 版本管理、pnpm、编辑器、tsconfig、环境变量与第一个项目。", "inLanguage": "zh-CN", "url": "https://uxgnod.github.io/vibe-hero/zh/setup.html", "image": "https://uxgnod.github.io/vibe-hero/assets/og-image.png", "dateModified": "2026-09-26", "author": {"@type": "Person", "name": "uxgnod", "url": "https://github.com/uxgnod"}, "isPartOf": {"@type": "WebSite", "name": "Vibe Hero", "url": "https://uxgnod.github.io/vibe-hero/"}}</script>
+<link rel="icon" href="../assets/favicon.svg">
+<link rel="stylesheet" href="../assets/style.css">
+<script>try{var t=localStorage.getItem('vh-theme');if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+<script defer src="../assets/app.js"></script>
+<script defer src="../assets/widgets.js"></script>
+</head>
+<body>
+<main class="content"><article class="doc">
+
+<p class="eyebrow">CHAPTER 02 · 起步</p>
+<h1>环境搭建与第一个项目</h1>
+<p class="lead">目标不是“装好软件”，而是得到一个<strong>可复现</strong>的环境：你的电脑、同事的电脑、CI、Agent 的沙箱，跑同一个项目得到同样的结果。</p>
+<div class="meta"><span>⏱ 约 45 分钟（含动手）</span><span class="badge use">会用</span><span>环境变量暴露规则是 <span class="badge deep">原理</span></span></div>
+
+<div class="goals">
+  <div class="goals-title">读完本章，你应该能够：</div>
+  <ul>
+    <li>用版本管理器安装并固定 Node 版本，用 pnpm 管理依赖。</li>
+    <li>读懂一个 <code>tsconfig.json</code> 中最关键的 6 个选项。</li>
+    <li>解释为什么 <code>VITE_</code> / <code>NEXT_PUBLIC_</code> 前缀的环境变量绝不能放密钥。</li>
+    <li>创建第一个 React + TS 项目，并为它写一份给 Agent 看的 <code>AGENTS.md</code>。</li>
+  </ul>
+</div>
+
+<h2 id="question">开场：“在我电脑上能跑”</h2>
+
+<div class="callout question">
+  <span class="callout-title">开场问题</span>
+  <p>同一个仓库，同事 <code>pnpm dev</code> 一切正常；你这里报 <code>SyntaxError: Unexpected token</code>；Agent 的沙箱里又报 <code>Cannot find module</code>。<strong>代码一模一样，为什么结果不同？</strong></p>
+</div>
+
+<p><strong>答案方向：</strong>“代码”只是运行结果的一个输入。另外三个输入是：<strong>Node 版本</strong>、<strong>包管理器及其版本</strong>、<strong>实际安装的依赖版本（由锁文件决定）</strong>。任何一个不一致，结果就可能不同。可复现环境的做法就是把这三样都写进仓库。</p>
+
+<figure class="diagram">
+<div class="diagram-scroll">
+<svg viewBox="0 0 780 210" role="img" aria-label="可复现环境的四个输入">
+  <defs><marker id="s1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="ar-fill"/></marker></defs>
+  <g font-size="13">
+    <rect x="10" y="30" width="170" height="80" rx="10" class="box-accent"/>
+    <text x="95" y="60" text-anchor="middle" font-weight="700">Node 版本</text>
+    <text x="95" y="82" text-anchor="middle" font-size="11.5" class="t-mono t-soft">.nvmrc / mise.toml</text>
+    <text x="95" y="98" text-anchor="middle" font-size="11" class="t-mute">"engines" 字段</text>
+
+    <rect x="200" y="30" width="170" height="80" rx="10" class="box-purple"/>
+    <text x="285" y="60" text-anchor="middle" font-weight="700">包管理器</text>
+    <text x="285" y="82" text-anchor="middle" font-size="11.5" class="t-mono t-soft">"packageManager"</text>
+    <text x="285" y="98" text-anchor="middle" font-size="11" class="t-mute">pnpm@10.x</text>
+
+    <rect x="390" y="30" width="170" height="80" rx="10" class="box-use"/>
+    <text x="475" y="60" text-anchor="middle" font-weight="700">依赖的确切版本</text>
+    <text x="475" y="82" text-anchor="middle" font-size="11.5" class="t-mono t-soft">pnpm-lock.yaml</text>
+    <text x="475" y="98" text-anchor="middle" font-size="11" class="t-mute">必须提交到 Git</text>
+
+    <rect x="580" y="30" width="190" height="80" rx="10" class="box-ok"/>
+    <text x="675" y="60" text-anchor="middle" font-weight="700">你的代码 + 配置</text>
+    <text x="675" y="82" text-anchor="middle" font-size="11.5" class="t-mono t-soft">src/ · tsconfig.json</text>
+    <text x="675" y="98" text-anchor="middle" font-size="11" class="t-mute">.env.example（不含真值）</text>
+  </g>
+  <line x1="390" y1="125" x2="390" y2="150" class="ln" marker-end="url(#s1)"/>
+  <rect x="240" y="155" width="300" height="44" rx="10" class="box"/>
+  <text x="390" y="182" text-anchor="middle" font-size="13" font-weight="700">相同的运行结果（本机 / 同事 / CI / Agent）</text>
+</svg>
+</div>
+<figcaption>四个输入都写进仓库，环境才可复现。唯一不能进仓库的是真实密钥，它们通过环境变量单独注入。</figcaption>
+</figure>
+
+<h2 id="node">第一步：用版本管理器安装 Node <span class="badge use">会用</span></h2>
+
+<p>不要直接从官网下载安装包。你迟早会同时维护需要不同 Node 版本的项目。版本管理器让“每个项目自动用它自己的版本”成为可能。推荐 <strong>mise</strong>（一个工具管理 Node、pnpm、Python、Go 等所有运行时）或 <strong>fnm</strong>（只管 Node，极简）。</p>
+
+<script type="text/plain" class="code" data-lang="bash" data-title="macOS / Linux，用 mise">
+# 安装 mise（其他安装方式见 mise 官网）
+curl https://mise.run | sh
+
+# 全局默认使用最新 LTS 版 Node
+mise use -g node@lts
+
+# 在项目目录里固定版本（生成 mise.toml，提交到 Git）
+cd my-project
+mise use node@24
+
+node -v    # 确认版本
+</script>
+
+<p>Node 的版本规律：<strong>偶数版本会进入长期支持（LTS）</strong>，奇数版本只是短期的“Current”。生产项目选 LTS。截至 2026 年 9 月，Node 24 是 LTS，Node 26 将在 10 月转为 LTS。</p>
+
+<h2 id="pnpm">第二步：安装 pnpm <span class="badge use">会用</span></h2>
+
+<script type="text/plain" class="code" data-lang="bash">
+# 方式一：用 mise 管理（推荐，和 Node 放在一起）
+mise use -g pnpm@latest
+
+# 方式二：用 npm 全局安装
+npm install -g pnpm
+
+pnpm -v
+</script>
+
+<p>在项目的 <code>package.json</code> 里写上 <code>"packageManager": "pnpm@10.x.x"</code>（写确切版本），很多工具（包括 CI 和部署平台）会据此使用同一个包管理器版本。</p>
+
+<p>最常用的命令，对照你熟悉的工具：</p>
+
+<table>
+  <thead><tr><th>做什么</th><th>pnpm</th><th>类比</th></tr></thead>
+  <tbody>
+    <tr><td>按锁文件安装全部依赖</td><td><code>pnpm install</code></td><td><code>go mod download</code></td></tr>
+    <tr><td>CI 里严格按锁文件装</td><td><code>pnpm install --frozen-lockfile</code></td><td><code>npm ci</code></td></tr>
+    <tr><td>添加运行时依赖</td><td><code>pnpm add zod</code></td><td><code>go get</code></td></tr>
+    <tr><td>添加开发依赖</td><td><code>pnpm add -D vitest</code></td><td>Maven test scope</td></tr>
+    <tr><td>运行 scripts 里的命令</td><td><code>pnpm dev</code> / <code>pnpm run build</code></td><td><code>make dev</code></td></tr>
+    <tr><td>运行依赖里的命令行工具</td><td><code>pnpm exec tsc</code>（或 <code>pnpm tsc</code>）</td><td>—</td></tr>
+    <tr><td>临时下载并运行一个工具</td><td><code>pnpm dlx create-vite</code></td><td><code>npx</code></td></tr>
+    <tr><td>看为什么装了某个包</td><td><code>pnpm why lodash</code></td><td><code>go mod why</code></td></tr>
+  </tbody>
+</table>
+
+<h2 id="editor">第三步：编辑器——你最重要的学习工具 <span class="badge use">会用</span></h2>
+
+<p>VS Code、Cursor、Zed 或 JetBrains WebStorm 都可以。它们内置了 TypeScript 语言服务（language service）：你写代码的同时，它在后台持续做类型检查。</p>
+
+<div class="callout tip">
+  <span class="callout-title">转型期最有用的一个习惯：悬停看类型</span>
+  <p>把鼠标悬停在任何变量、函数、组件上，编辑器会显示它的完整类型。读 Agent 生成的代码时，这是理解数据形状最快的方法——比读文档快得多。按住 <kbd>Cmd</kbd>/<kbd>Ctrl</kbd> 点击可以跳到定义，包括 node_modules 里库的类型声明。</p>
+</div>
+
+<p>建议安装的扩展：<strong>Biome</strong>（格式化 + Lint，或 ESLint + Prettier）、<strong>Tailwind CSS IntelliSense</strong>（样式类名提示）、<strong>Error Lens</strong>（把错误直接显示在代码行尾）。</p>
+
+<h2 id="agent-cli">第四步：安装一个 Coding Agent</h2>
+
+<p>本教程不绑定具体工具。主流的终端 Agent 有 <strong>Claude Code</strong>（Anthropic）、<strong>Codex CLI</strong>（OpenAI）、<strong>pi</strong>（开源、极简、可用 TypeScript 扩展）等，它们的工作原理相同（第 12 章会拆开讲）。安装方式各自以官方文档为准，大多支持 <code>npm install -g</code>。</p>
+
+<p>装好后先做一件事：在一个空目录里让它“解释你刚装好的环境”——检查它能否正确运行 <code>node -v</code>、<code>pnpm -v</code>。这能确认 Agent 的执行环境和你的终端一致。</p>
+
+<h2 id="first">第五步：第一个 TypeScript 程序（不用任何框架）</h2>
+
+<p>先不碰 React。用最少的东西感受“类型检查”和“运行”是两件事：</p>
+
+<script type="text/plain" class="code" data-lang="bash">
+mkdir hello-ts && cd hello-ts
+pnpm init                       # 生成 package.json
+pnpm add -D typescript @types/node
+pnpm tsc --init                 # 生成 tsconfig.json
+</script>
+
+<script type="text/plain" class="code" data-lang="ts" data-title="hello.ts">
+type Link = { url: string; title?: string };   // title? 表示可选
+
+function describe(link: Link): string {
+  return `${link.title ?? "(无标题)"} → ${link.url}`;
+}
+
+console.log(describe({ url: "https://react.dev" }));
+console.log(describe({ url: 42 }));   // 故意写错
+</script>
+
+<script type="text/plain" class="code" data-lang="bash">
+node hello.ts          # Node 直接运行：两行都会输出（第二行是 "(无标题) → 42"）
+pnpm tsc --noEmit      # 类型检查：报错 Type 'number' is not assignable to type 'string'
+</script>
+
+<p>亲手跑一遍这两条命令，比读十遍“类型擦除”的定义都有用。你会看到：<strong>运行器很宽容，类型检查器很严格</strong>，而你需要的是后者把关。</p>
+
+<h2 id="react-project">第六步：创建 LinkNote 的前端骨架</h2>
+
+<p>学习阶段，推荐先用 <strong>Vite + React</strong> 的纯前端模板：概念最少，只有浏览器这一个运行环境，第 06 章学 React 时用它。第 07 章再换成全栈框架。</p>
+
+<script type="text/plain" class="code" data-lang="bash">
+pnpm create vite@latest linknote --template react-ts
+cd linknote
+pnpm install
+pnpm dev               # 打开终端里显示的 http://localhost:5173
+</script>
+
+<p>其他常见的创建命令（以各官网为准）：</p>
+
+<script type="text/plain" class="code" data-lang="bash">
+pnpm create next-app@latest          # Next.js（Vercel 路线）
+pnpm create cloudflare@latest        # Cloudflare 项目向导，可选多种框架
+pnpm create @tanstack/start@latest   # TanStack Start
+</script>
+
+<h3>读懂项目结构</h3>
+
+<table>
+  <thead><tr><th>路径</th><th>是什么</th><th>要不要提交</th></tr></thead>
+  <tbody>
+    <tr><td><code>src/</code></td><td>你的源码。<code>main.tsx</code> 是入口，<code>App.tsx</code> 是根组件</td><td>是</td></tr>
+    <tr><td><code>public/</code></td><td>原样拷贝到产物的静态文件（图标等）</td><td>是</td></tr>
+    <tr><td><code>index.html</code></td><td>浏览器加载的第一个文件，里面引用 <code>src/main.tsx</code></td><td>是</td></tr>
+    <tr><td><code>package.json</code> / <code>pnpm-lock.yaml</code></td><td>依赖声明 / 确切版本</td><td>是</td></tr>
+    <tr><td><code>tsconfig*.json</code></td><td>TypeScript 配置</td><td>是</td></tr>
+    <tr><td><code>vite.config.ts</code></td><td>构建工具配置</td><td>是</td></tr>
+    <tr><td><code>node_modules/</code></td><td>安装的依赖（可随时重建）</td><td><strong>否</strong></td></tr>
+    <tr><td><code>dist/</code></td><td>构建产物</td><td><strong>否</strong></td></tr>
+    <tr><td><code>.env</code> / <code>.env.local</code></td><td>本地环境变量（可能含密钥）</td><td><strong>否</strong>（提交 <code>.env.example</code>）</td></tr>
+  </tbody>
+</table>
+
+<h2 id="tsconfig">tsconfig.json：只需要看懂这几项 <span class="badge use">会用</span></h2>
+
+<script type="text/plain" class="code" data-lang="jsonc" data-title="tsconfig.json（推荐的关键项）">
+{
+  "compilerOptions": {
+    "strict": true,                      // 打开全部严格检查：必开
+    "noUncheckedIndexedAccess": true,    // arr[i] 的类型带上 | undefined，逼你处理越界
+    "target": "ES2023",                  // 产出的 JS 语法版本
+    "module": "ESNext",                  // 使用 ES 模块（import/export）
+    "moduleResolution": "bundler",       // 按打包器的规则解析 import 路径
+    "jsx": "react-jsx",                  // 如何处理 .tsx 里的 JSX
+    "verbatimModuleSyntax": true,        // 纯类型的导入必须写 import type
+    "noEmit": true,                      // tsc 只检查，不产出文件（交给打包器）
+    "paths": { "@/*": ["./src/*"] }      // 路径别名：import x from "@/lib/x"
+  },
+  "include": ["src"]
+}
+</script>
+
+<ul>
+  <li><strong><code>strict</code></strong> 是最重要的一项。关掉它，TS 会退化成“带提示的 JS”，大量错误（如 <code>null</code> 访问）不会被发现。如果 Agent 为了消除报错去关掉 strict 或加 <code>// @ts-ignore</code>，这是需要你拦下来的信号。</li>
+  <li><strong><code>noUncheckedIndexedAccess</code></strong> 默认不开，但强烈建议开：<code>items[0]</code> 可能不存在，这类 bug 在生产环境里非常常见。</li>
+  <li>如果你打算用 Node 直接运行 <code>.ts</code>，还可以开 <strong><code>erasableSyntaxOnly</code></strong>：它禁止使用 <code>enum</code> 等“需要生成代码”的 TS 语法，保证类型可以被简单地剥离。</li>
+</ul>
+
+<h2 id="env">环境变量：哪些会被送到浏览器 <span class="badge deep">原理</span></h2>
+
+<p>这是新手最容易犯、后果最严重的错误之一，所以即使在“搭环境”这一章，也要讲到原理层。</p>
+
+<p>后端开发中，环境变量只存在于服务器进程里，天然是保密的。但在前端构建中，打包器会在<strong>构建时</strong>把代码里引用的某些环境变量<strong>直接替换成字面值</strong>，写进发给浏览器的 JS 文件里。为了防止误泄露，各框架规定：只有带特定前缀的变量才会被这样处理。</p>
+
+<script type="text/plain" class="code" data-lang="bash" data-title=".env.local">
+# 带前缀：会被内联进浏览器 JS，任何用户都能在开发者工具里看到
+VITE_APP_NAME=LinkNote
+NEXT_PUBLIC_SITE_URL=https://linknote.example.com
+
+# 不带前缀：只在服务器端代码中可读
+DATABASE_URL=postgres://user:password@host/db
+ANTHROPIC_API_KEY=sk-ant-...
+</script>
+
+<script type="text/plain" class="code" data-lang="ts" data-title="构建前 → 构建后（浏览器拿到的文件）">
+// 你写的
+const name = import.meta.env.VITE_APP_NAME;
+// 打包器输出到浏览器 JS 里的
+const name = "LinkNote";
+</script>
+
+<div class="callout warn">
+  <span class="callout-title">规则</span>
+  <p><strong>带 <code>VITE_</code> / <code>NEXT_PUBLIC_</code> 等公开前缀的变量，等同于公开发布。</strong>API Key、数据库连接串绝不能用这类前缀。如果浏览器端需要调用 LLM，正确做法是浏览器请求你自己的服务器，由服务器带着密钥去调用（第 11 章）。</p>
+</div>
+
+<h2 id="agents-md">第七步：给 Agent 的项目说明书</h2>
+
+<p>几乎所有 Coding Agent 都会在启动时读取项目根目录的说明文件：<code>AGENTS.md</code>（跨工具的通用约定）或 <code>CLAUDE.md</code>（Claude Code）。它相当于你给新同事的“入职文档”。项目一创建就写，内容越具体越好：</p>
+
+<script type="text/plain" class="code" data-lang="md" data-title="AGENTS.md">
+# LinkNote
+
+带 AI 摘要的链接收藏应用。技术栈：React 19 + TypeScript（strict）+ Vite + Tailwind v4。
+
+## 命令
+- 安装：pnpm install（只用 pnpm，不要用 npm/yarn）
+- 开发：pnpm dev
+- 类型检查：pnpm typecheck（每次改动后必须通过）
+- 测试：pnpm test
+- Lint/格式化：pnpm biome check --write
+
+## 约定
+- 组件放 src/components，一个文件一个组件，命名 PascalCase
+- 外部输入（表单、接口响应、URL 参数）一律用 zod 校验
+- 不要使用 any；不要添加 @ts-ignore；需要时用 unknown + 收窄
+- 新增依赖前先说明理由并等待确认
+
+## 完成标准
+- typecheck、test、biome check 全部通过
+- 说明改了哪些文件、为什么
+</script>
+
+<p>第 13 章会详细讲怎么写好这份文件。现在记住一个原则：<strong>凡是你发现自己第二次对 Agent 说同一句话，就把它写进 AGENTS.md。</strong></p>
+
+<h2 id="troubleshoot">常见报错速查</h2>
+
+<table>
+  <thead><tr><th>报错</th><th>通常原因</th><th>处理</th></tr></thead>
+  <tbody>
+    <tr><td><code>command not found: pnpm</code></td><td>没装，或 shell 没加载版本管理器</td><td>重开终端；检查 mise/fnm 的 shell 集成</td></tr>
+    <tr><td><code>Cannot find module 'x'</code></td><td>没安装依赖，或 pnpm 严格模式下没声明该依赖</td><td><code>pnpm install</code>；或 <code>pnpm add x</code></td></tr>
+    <tr><td><code>ERR_REQUIRE_ESM</code> / <code>Cannot use import statement outside a module</code></td><td>ES 模块与 CommonJS 混用（第 03 章）</td><td>检查 <code>"type": "module"</code> 和文件扩展名</td></tr>
+    <tr><td><code>EADDRINUSE: address already in use :::5173</code></td><td>端口被占用（常见于上一个 dev server 没关）</td><td>关掉旧进程或换端口</td></tr>
+    <tr><td><code>Unsupported engine</code></td><td>Node 版本不满足项目要求</td><td>按项目的 mise.toml / .nvmrc 切换版本</td></tr>
+  </tbody>
+</table>
+
+<div class="callout agent">
+  <span class="callout-title">对 Agent 怎么说</span>
+  <div class="compare">
+    <div class="head bad">模糊</div><div class="head good">精确</div>
+    <div class="bad">“项目跑不起来，帮我修。”</div>
+    <div class="good">“运行 <code>pnpm dev</code> 报错（完整输出如下）。先不要改代码：请先告诉我 Node 版本、pnpm 版本、锁文件是否与 package.json 一致，判断是环境问题还是代码问题，再给修复方案。”</div>
+  </div>
+  <p>先诊断、后修改，是避免 Agent “为了让报错消失而乱改”的最有效方法。</p>
+</div>
+
+<h2 id="check">自检</h2>
+
+<details class="check">
+  <summary>1. 你在 <code>.env</code> 里写了 <code>VITE_OPENAI_KEY=sk-...</code>，只在一个“设置”页面用到它，页面还加了登录保护。安全吗？</summary>
+  <div class="answer"><p>不安全。<code>VITE_</code> 前缀的变量在构建时被内联进 JS 文件。JS 文件是静态资源，不需要登录就能下载（登录保护的是页面数据，不是打包后的脚本）。任何人打开 JS 文件都能搜到这个 key。应该去掉前缀，只在服务器端使用。</p></div>
+</details>
+
+<details class="check">
+  <summary>2. 为什么锁文件必须提交，而 node_modules 不能提交？</summary>
+  <div class="answer"><p>锁文件记录了每个依赖（包括间接依赖）的确切版本和校验值，是“可复现”的关键；它很小，而且是文本。node_modules 可以随时从锁文件重建，体积巨大，还可能包含和操作系统相关的二进制文件。</p></div>
+</details>
+
+<details class="check">
+  <summary>3. Agent 为了解决一个类型错误，在 tsconfig 里把 <code>strict</code> 改成了 <code>false</code>，然后说“类型检查通过了”。你怎么评价？</summary>
+  <div class="answer"><p>这是“让检查闭嘴”而不是“修复问题”。关闭 strict 会让大量真实缺陷（如 null 访问）不再被报告。应该回退这个修改，要求 Agent 在 strict 模式下修复具体错误，并把“不得修改 tsconfig 严格选项”写进 AGENTS.md。</p></div>
+</details>
+
+</article></main>
+</body>
+</html>

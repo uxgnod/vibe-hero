@@ -1,0 +1,300 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>部署三条路线 · Vibe Hero</title>
+<meta name="description" content="常驻进程、按需函数与 isolate 三种运行时形状；Vercel、Cloudflare、自托管的部署方式、限制与选择方法。">
+<!-- seo -->
+<link rel="canonical" href="https://uxgnod.github.io/vibe-hero/zh/deploy.html">
+<link rel="alternate" hreflang="zh-CN" href="https://uxgnod.github.io/vibe-hero/zh/deploy.html">
+<link rel="alternate" hreflang="en" href="https://uxgnod.github.io/vibe-hero/en/deploy.html">
+<link rel="alternate" hreflang="x-default" href="https://uxgnod.github.io/vibe-hero/en/deploy.html">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Vibe Hero">
+<meta property="og:title" content="部署三条路线 · Vibe Hero">
+<meta property="og:description" content="常驻进程、按需函数与 isolate 三种运行时形状；Vercel、Cloudflare、自托管的部署方式、限制与选择方法。">
+<meta property="og:url" content="https://uxgnod.github.io/vibe-hero/zh/deploy.html">
+<meta property="og:image" content="https://uxgnod.github.io/vibe-hero/assets/og-image.png">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:locale:alternate" content="en_US">
+<meta name="twitter:card" content="summary_large_image">
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "TechArticle", "headline": "部署三条路线", "description": "常驻进程、按需函数与 isolate 三种运行时形状；Vercel、Cloudflare、自托管的部署方式、限制与选择方法。", "inLanguage": "zh-CN", "url": "https://uxgnod.github.io/vibe-hero/zh/deploy.html", "image": "https://uxgnod.github.io/vibe-hero/assets/og-image.png", "dateModified": "2026-09-26", "author": {"@type": "Person", "name": "uxgnod", "url": "https://github.com/uxgnod"}, "isPartOf": {"@type": "WebSite", "name": "Vibe Hero", "url": "https://uxgnod.github.io/vibe-hero/"}}</script>
+<link rel="icon" href="../assets/favicon.svg">
+<link rel="stylesheet" href="../assets/style.css">
+<script>try{var t=localStorage.getItem('vh-theme');if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+<script defer src="../assets/app.js"></script>
+<script defer src="../assets/widgets.js"></script>
+</head>
+<body>
+<main class="content"><article class="doc">
+
+<p class="eyebrow">CHAPTER 09 · 全栈</p>
+<h1>部署三条路线：Vercel、Cloudflare、自托管</h1>
+<p class="lead">选择部署平台，本质上是选择<strong>运行时的形状</strong>：你的代码是一个一直活着的进程，还是按需被唤醒、随时可能被回收的实例？理解这个差异，你就能预判哪些代码在某个平台上会“悄悄失效”。</p>
+<div class="meta"><span>⏱ 约 55 分钟</span><span class="badge deep">原理</span>（运行时形状与状态）<span class="badge use">会用</span>（至少一个平台的完整部署）</div>
+
+<div class="goals">
+  <div class="goals-title">读完本章，你应该能够：</div>
+  <ul>
+    <li>比较常驻进程、按需函数实例、V8 isolate 三种运行时的生命周期和限制。</li>
+    <li>指出一段代码在 serverless 平台上会失效的原因（内存状态、定时器、本地文件、长连接）。</li>
+    <li>分别说出在 Vercel、Cloudflare、自托管上部署 LinkNote 的步骤和配置要点。</li>
+    <li>按项目需求用决策树选出平台。</li>
+  </ul>
+</div>
+
+<h2 id="question">开场：在服务器上正常，上了云就不对</h2>
+
+<div class="callout question">
+  <span class="callout-title">开场问题</span>
+  <p>LinkNote 的 API 在你自己的服务器上运行良好：它用一个模块级变量 <code>let requestCount = 0</code> 做简单的限流；用 <code>setInterval</code> 每小时清理过期的草稿；上传的图片先存到本地 <code>/tmp</code> 再处理。部署到 Vercel 或 Cloudflare 后：限流时灵时不灵，清理任务从不执行，图片处理偶尔报文件不存在。<strong>代码一行没改，为什么行为变了？</strong></p>
+</div>
+
+<p><strong>答案方向：</strong>在自己的服务器上，你的代码是<strong>一个常驻进程</strong>：内存里的变量一直在，定时器一直在跑，本地文件一直在。在 serverless 平台上，你的代码是<strong>按需启动的许多个实例</strong>：可能同时有 50 个实例各自计数；请求处理完后实例会被冻结或回收，定时器不会继续执行；每个实例有自己的临时文件系统，下一个请求可能落到另一个实例上。所以：<strong>状态不能放在内存里，定时任务和文件存储要用平台提供的专门能力</strong>。</p>
+
+<h2 id="shapes">三种运行时形状 <span class="badge deep">原理</span></h2>
+
+<table>
+  <thead><tr><th></th><th>常驻进程（自托管）</th><th>按需函数实例（Vercel Functions）</th><th>V8 isolate（Cloudflare Workers）</th></tr></thead>
+  <tbody>
+    <tr><td>生命周期</td><td>一直运行，直到你重启</td><td>按需启动；空闲一段时间后回收</td><td>按需创建，非常轻量，随时可能被回收</td></tr>
+    <tr><td>实例数量</td><td>你决定（通常 1～几个）</td><td>平台自动扩缩，可能很多</td><td>全球各机房各自独立运行</td></tr>
+    <tr><td>冷启动</td><td>无</td><td>有（通常几百毫秒级，平台有优化）</td><td>几乎为零（毫秒级）</td></tr>
+    <tr><td>内存变量</td><td>✓ 可靠共享</td><td>✗ 仅在单个实例内、且不持久</td><td>✗ 同左</td></tr>
+    <tr><td>后台定时器</td><td>✓</td><td>✗ 用平台 Cron</td><td>✗ 用 Cron Triggers / Durable Object alarm</td></tr>
+    <tr><td>本地文件</td><td>✓</td><td>仅临时目录，不跨请求保证</td><td>✗ 用 R2 / KV</td></tr>
+    <tr><td>单次执行时长</td><td>无限制</td><td>有上限（按套餐）</td><td>CPU 时间有上限；等待 I/O 的时间不计入</td></tr>
+    <tr><td>WebSocket / 长连接</td><td>✓</td><td>受限</td><td>✓ 通过 Durable Objects</td></tr>
+    <tr><td>计费</td><td>按机器（固定）</td><td>按用量（CPU 时间、调用次数）</td><td>按用量（CPU 时间、请求数），单价很低</td></tr>
+  </tbody>
+</table>
+
+<div class="callout analogy">
+  <span class="callout-title">类比</span>
+  <p>常驻进程像你自己开的一家店：店员（进程）一直在，账本（内存）放在柜台上。Serverless 像劳务派遣：来一单活派一个临时工，干完就走，下一单可能是另一个人。账本不能放在临时工口袋里，必须放在所有人都能访问的地方（数据库、KV）。</p>
+  <p><strong>失配点：</strong>平台会复用“热”实例，所以内存变量<em>有时</em>能在多个请求之间保留——这正是 bug 表现为“时灵时不灵”的原因。不要依赖它，但可以利用它做纯粹的性能缓存（例如复用数据库客户端对象）。</p>
+</div>
+
+<h2 id="paths">一次请求的三条路径</h2>
+
+<p>切换标签，看看同一个请求在三个平台上分别经过什么：</p>
+
+<div data-widget="deploy-flow"></div>
+
+<h2 id="vercel">Vercel 路线 <span class="badge use">会用</span></h2>
+
+<p>Vercel 最大的价值是<strong>“git push 即部署”</strong>的开发体验：</p>
+<ol class="steps">
+  <li>在 Vercel 控制台导入 GitHub 仓库，它自动识别框架（Next.js、TanStack Start、Vite 等）和构建命令。</li>
+  <li>每次推送到主分支 → 生产部署；<strong>每个 Pull Request → 独立的预览部署（preview deployment）</strong>，有自己的 URL。这对 Agent 工作流极其有用：Agent 提交 PR，你打开预览链接直接验收。</li>
+  <li>在控制台为 Production / Preview / Development 分别设置环境变量；本地用 <code>vercel env pull</code> 同步。</li>
+  <li>数据库、Redis、Blob 等通过 Marketplace 接入第三方服务（Neon、Supabase、Upstash 等），环境变量自动注入。</li>
+</ol>
+
+<p>需要注意的限制：函数有最长执行时间（按套餐不同）；长任务应该交给队列或工作流；团队协作按席位收费；Next.js 的部分高级特性（如 ISR、图片优化）在 Vercel 上体验最完整，迁移到其他平台时需要逐项验证。</p>
+
+<h2 id="cloudflare">Cloudflare 路线 <span class="badge use">会用</span></h2>
+
+<p>Cloudflare Workers 的核心概念是<strong>绑定（binding）</strong>：你在配置文件中声明需要哪些资源（数据库、KV、存储桶、队列……），运行时通过 <code>env</code> 对象注入给你的代码。没有连接字符串，没有 SDK 密钥。</p>
+
+<script type="text/plain" class="code" data-lang="jsonc" data-title="wrangler.jsonc">
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "linknote",
+  "main": "src/worker.ts",
+  "compatibility_date": "2026-09-01",          // 锁定运行时行为版本
+  "compatibility_flags": ["nodejs_compat"],     // 启用 Node API 兼容层
+  "assets": { "directory": "./dist/client" },   // 静态资源（前端产物）
+  "d1_databases": [{ "binding": "DB", "database_name": "linknote", "database_id": "<id>" }],
+  "kv_namespaces": [{ "binding": "CACHE", "id": "<id>" }],
+  "r2_buckets": [{ "binding": "FILES", "bucket_name": "linknote-files" }],
+  "queues": {
+    "producers": [{ "binding": "SUMMARIZE", "queue": "summarize" }],
+    "consumers": [{ "queue": "summarize", "max_retries": 3 }]
+  },
+  "triggers": { "crons": ["0 3 * * *"] }        // 每天 3 点执行 scheduled()
+}
+</script>
+
+<script type="text/plain" class="code" data-lang="ts" data-title="src/worker.ts">
+import { Hono } from "hono";
+
+// 运行 `wrangler types` 可以根据配置自动生成 Env 类型
+type Env = { DB: D1Database; CACHE: KVNamespace; FILES: R2Bucket; SUMMARIZE: Queue<{ linkId: string }> };
+
+const app = new Hono<{ Bindings: Env }>();
+
+app.post("/api/links", async (c) => {
+  const { url } = await c.req.json<{ url: string }>();   // 实际项目中用 zValidator
+  const id = crypto.randomUUID();
+  await c.env.DB.prepare("INSERT INTO links (id, url, status) VALUES (?, ?, 'pending')").bind(id, url).run();
+  await c.env.SUMMARIZE.send({ linkId: id });             // 投递到队列，立即返回
+  return c.json({ id }, 202);
+});
+
+export default {
+  fetch: app.fetch,
+  async queue(batch, env) {                                // 队列消费者：在同一个 Worker 里
+    for (const msg of batch.messages) {
+      await summarize(env, msg.body.linkId);
+      msg.ack();
+    }
+  },
+  async scheduled(_event, env) {                           // Cron 触发：替代 setInterval
+    await env.DB.prepare("DELETE FROM drafts WHERE created_at < datetime('now', '-7 days')").run();
+  },
+} satisfies ExportedHandler<Env, { linkId: string }>;
+</script>
+
+<h3>Cloudflare 的存储与计算原语</h3>
+
+<table>
+  <thead><tr><th>产品</th><th>是什么</th><th>LinkNote 用途</th></tr></thead>
+  <tbody>
+    <tr><td><strong>D1</strong></td><td>托管 SQLite</td><td>收藏、用户数据</td></tr>
+    <tr><td><strong>KV</strong></td><td>全球分布的键值存储，读多写少，最终一致</td><td>缓存网页标题、配置</td></tr>
+    <tr><td><strong>R2</strong></td><td>对象存储，兼容 S3 API，无出口流量费</td><td>网页快照、截图</td></tr>
+    <tr><td><strong>Durable Objects</strong></td><td>每个 ID 对应一个全球唯一、单线程、自带存储的对象</td><td>每个用户一个 Agent 实例（第 12 章）；实时协作</td></tr>
+    <tr><td><strong>Queues / Workflows</strong></td><td>消息队列 / 持久化多步工作流</td><td>摘要生成任务</td></tr>
+    <tr><td><strong>Workers AI / AI Gateway / Vectorize</strong></td><td>边缘推理 / LLM 调用网关（缓存、限流、日志）/ 向量数据库</td><td>嵌入向量、语义搜索</td></tr>
+    <tr><td><strong>Hyperdrive</strong></td><td>到外部 Postgres 的连接池与查询缓存</td><td>如果选择用 Postgres 而非 D1</td></tr>
+  </tbody>
+</table>
+
+<p><strong>Durable Objects</strong> 值得多说一句，因为它是 Cloudflare 独有、也最难理解的原语。它解决了 serverless 的根本难题——“状态放在哪”：你可以按一个 ID（比如用户 ID、聊天室 ID）获取一个对象，<strong>全世界所有对这个 ID 的请求都路由到同一个实例</strong>，而且它一次只处理一个请求（不需要锁），自带持久化存储，可以持有 WebSocket 连接、设置闹钟（alarm）。Cloudflare 的 Agents SDK 就构建在它之上。</p>
+
+<p>部署流程：<code>pnpm wrangler login</code> → <code>wrangler d1 create</code> 等创建资源 → <code>wrangler deploy</code>；也可以在控制台连接 Git 仓库自动部署并生成预览 URL。本地开发时，Cloudflare 的 Vite 插件会在真实的 workerd 运行时里运行你的代码，并在本地模拟 D1、KV 等绑定。密钥用 <code>wrangler secret put ANTHROPIC_API_KEY</code> 设置。</p>
+
+<h2 id="selfhost">自托管路线 <span class="badge use">会用</span></h2>
+
+<p>如果你有运维经验，这条路最“熟悉”：构建一个 Docker 镜像，跑在一台 VPS 上，前面放一个反向代理处理 HTTPS。</p>
+
+<script type="text/plain" class="code" data-lang="text" data-title="Dockerfile（多阶段构建，Node 应用）">
+FROM node:24-slim AS build
+WORKDIR /app
+RUN npm install -g pnpm@10
+COPY package.json pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile
+COPY . .
+RUN pnpm build && pnpm prune --prod
+
+FROM node:24-slim
+WORKDIR /app
+ENV NODE_ENV=production
+COPY --from=build /app/package.json ./
+COPY --from=build /app/node_modules ./node_modules
+COPY --from=build /app/dist ./dist
+USER node
+EXPOSE 3000
+CMD ["node", "dist/server.js"]
+</script>
+
+<script type="text/plain" class="code" data-lang="text" data-title="Caddyfile（自动申请 HTTPS 证书）">
+linknote.example.com {
+  reverse_proxy app:3000
+}
+</script>
+
+<p>让自托管变得省心的工具：<strong>Coolify</strong>、<strong>Dokploy</strong>（开源的自托管 PaaS，提供类似 Vercel 的 Git 部署、预览环境、数据库一键创建）；<strong>Kamal</strong>（把 Docker 应用零停机部署到任意服务器）。常见做法是在前面再加一层 Cloudflare CDN，同时获得缓存和 DDoS 防护。</p>
+
+<p>你需要自己负责的事：系统和依赖的安全更新、数据库备份（并演练恢复！）、监控与告警、日志收集、磁盘空间、扩容。这些是“成本可预测、完全可控”的代价。</p>
+
+<h2 id="decide">怎么选</h2>
+
+<figure class="diagram">
+<div class="diagram-scroll">
+<svg viewBox="0 0 780 360" role="img" aria-label="部署平台决策树">
+  <defs><marker id="d1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="ar-fill"/></marker></defs>
+  <g font-size="12.5">
+    <rect x="250" y="10" width="280" height="44" rx="10" class="box-accent"/>
+    <text x="390" y="37" text-anchor="middle" font-weight="700">需要长时间运行的计算 / GPU / 常驻后台进程？</text>
+    <line x1="300" y1="56" x2="120" y2="95" class="ln" marker-end="url(#d1)"/><text x="190" y="72" class="t-mute">是</text>
+    <line x1="480" y1="56" x2="560" y2="95" class="ln" marker-end="url(#d1)"/><text x="530" y="72" class="t-mute">否</text>
+    <rect x="20" y="98" width="200" height="50" rx="10" class="box-ok"/>
+    <text x="120" y="120" text-anchor="middle" font-weight="700">自托管 / 容器平台</text>
+    <text x="120" y="138" text-anchor="middle" font-size="11" class="t-soft">VPS + Docker，或 Fly、Railway</text>
+
+    <rect x="400" y="98" width="330" height="44" rx="10" class="box-accent"/>
+    <text x="565" y="125" text-anchor="middle" font-weight="700">重度依赖 Next.js 的服务器组件、缓存等特性？</text>
+    <line x1="460" y1="144" x2="330" y2="185" class="ln" marker-end="url(#d1)"/><text x="380" y="162" class="t-mute">是</text>
+    <line x1="670" y1="144" x2="670" y2="185" class="ln" marker-end="url(#d1)"/><text x="680" y="168" class="t-mute">否</text>
+    <rect x="230" y="188" width="200" height="50" rx="10" class="box-soft"/>
+    <text x="330" y="210" text-anchor="middle" font-weight="700">Vercel</text>
+    <text x="330" y="228" text-anchor="middle" font-size="11" class="t-soft">功能最完整、零配置</text>
+
+    <rect x="520" y="188" width="250" height="44" rx="10" class="box-accent"/>
+    <text x="645" y="215" text-anchor="middle" font-weight="700">需要实时 / 有状态 / 成本敏感 / 全球低延迟？</text>
+    <line x1="590" y1="234" x2="520" y2="275" class="ln" marker-end="url(#d1)"/><text x="540" y="252" class="t-mute">是</text>
+    <line x1="720" y1="234" x2="720" y2="275" class="ln" marker-end="url(#d1)"/><text x="730" y="258" class="t-mute">否</text>
+    <rect x="410" y="278" width="220" height="50" rx="10" class="box-use"/>
+    <text x="520" y="300" text-anchor="middle" font-weight="700">Cloudflare</text>
+    <text x="520" y="318" text-anchor="middle" font-size="11" class="t-soft">Workers + DO + D1/R2</text>
+    <rect x="645" y="278" width="125" height="50" rx="10" class="box-soft"/>
+    <text x="707" y="300" text-anchor="middle" font-weight="700">任选</text>
+    <text x="707" y="318" text-anchor="middle" font-size="11" class="t-soft">选你最快上线的</text>
+  </g>
+</svg>
+</div>
+<figcaption>一个粗略的决策树。实际中还要考虑团队经验、数据合规、已有基础设施。第一次上线时，“最快能上线”比“理论最优”更重要。</figcaption>
+</figure>
+
+<div class="callout tip">
+  <span class="callout-title">保持可迁移性的三个习惯</span>
+  <ul>
+    <li>业务逻辑写在普通 TS 模块里，平台相关代码（绑定、Server Action）只在适配层。</li>
+    <li>优先使用 Web 标准 API（fetch、Request、Response、crypto）和可移植的存储（Postgres、S3 兼容对象存储）。</li>
+    <li>把平台特定能力（Durable Objects、ISR）视为“有意识的锁定”：用它时写下为什么。</li>
+  </ul>
+</div>
+
+<div class="callout project">
+  <span class="callout-title">LinkNote 中的落点</span>
+  <ul>
+    <li><strong>Vercel 版</strong>：Next.js + Neon Postgres + Vercel 的队列 / 工作流能力处理摘要任务。</li>
+    <li><strong>Cloudflare 版</strong>：TanStack Start 或 Hono + D1 + Queues + 每个用户一个 Durable Object 承载“问我的收藏” Agent。</li>
+    <li><strong>自托管版</strong>：TanStack Start（Node）+ Postgres + BullMQ/Redis，Docker Compose 一键启动，Caddy 做 HTTPS。</li>
+  </ul>
+</div>
+
+<div class="callout agent">
+  <span class="callout-title">对 Agent 怎么说</span>
+  <div class="compare">
+    <div class="head bad">模糊</div><div class="head good">精确</div>
+    <div class="bad">“帮我部署到 Cloudflare。”</div>
+    <div class="good">“部署目标 Cloudflare Workers。检查代码中所有依赖常驻进程的地方：模块级可变状态、setInterval/setTimeout 后台任务、本地文件读写、长时间 CPU 计算，列出清单和替代方案（KV/D1、Cron Trigger、R2、Queue）。先给清单，确认后再改。”</div>
+    <div class="row-sep"></div>
+    <div class="bad">“加一个定时清理。”</div>
+    <div class="good">“每天 UTC 3 点清理 7 天前的草稿。我们部署在 Vercel，用平台的 Cron 调用一个受密钥保护的路由（校验 Authorization 头），不要在代码里用 setInterval。”</div>
+  </div>
+  <p>本章词汇：常驻进程 / serverless / isolate、冷启动、实例、绑定（binding）、Cron 触发、预览部署、回滚、环境变量 / 密钥（secret）、兼容性日期、Durable Object、供应商锁定。</p>
+</div>
+
+<div class="callout interview">
+  <span class="callout-title">面试角</span>
+  <ul>
+    <li><strong>serverless 有什么优缺点？</strong>优点：自动扩缩容、按用量计费、免运维。缺点：冷启动、执行时长限制、无状态导致需要外部存储、调试和可观测性更难、厂商锁定。</li>
+    <li><strong>边缘计算（edge）适合做什么，不适合做什么？</strong>适合低延迟的请求处理、个性化、鉴权、缓存；如果数据库在单一区域，边缘函数频繁往返数据库反而更慢——计算应该靠近数据。</li>
+  </ul>
+</div>
+
+<h2 id="check">自检</h2>
+
+<details class="check">
+  <summary>1. 为了缓存一个很少变化的配置，代码在模块顶层写了 <code>let cache: Config | null = null</code>，第一次请求时从数据库加载。在 serverless 平台上这是 bug 吗？</summary>
+  <div class="answer"><p>通常不是 bug，而是可以接受的性能优化：每个实例第一次请求时加载一次，之后在该实例内复用。关键在于它是<strong>可以丢失、可以不一致的缓存</strong>，而不是唯一的数据来源。需要注意的是配置更新后，各个实例会在不同时间刷新；如果需要立即生效，就要设置过期时间或改用 KV。对比开场问题中的限流计数器——那是“必须准确共享”的状态，放在内存里就是 bug。</p></div>
+</details>
+
+<details class="check">
+  <summary>2. 你的 Worker 部署在全球 300 个城市，但 Postgres 在美国东部。一个请求要做 5 次串行查询。一位东京用户的请求会发生什么？有哪些改进方法？</summary>
+  <div class="answer"><p>Worker 在东京运行，但每次查询都要跨太平洋往返（每次约 150ms），5 次串行 ≈ 750ms，反而比把整个服务部署在美国东部更慢。改进：减少往返次数（合并查询、并行）；用 Hyperdrive 维护连接池并缓存查询；开启 Smart Placement，让 Worker 在靠近数据库的地方执行；或把数据迁移到更靠近用户的存储（如 D1 的读副本）。</p></div>
+</details>
+
+<details class="check">
+  <summary>3. 预览部署（preview deployment）连接的是生产数据库。这样做有什么风险？</summary>
+  <div class="answer"><p>未经审查的 PR 代码（可能是 Agent 写的）直接操作生产数据：一次错误的迁移或删除逻辑就会破坏真实数据。预览环境应该使用独立的数据库（或者用 Neon 这类支持分支的数据库，为每个 PR 创建一个数据分支），并使用单独的、权限受限的密钥。</p></div>
+</details>
+
+</article></main>
+</body>
+</html>

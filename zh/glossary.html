@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>术语表与学习计划 · Vibe Hero</title>
+<meta name="description" content="中英术语对照表、8 周学习计划、能力自查清单与官方资源索引。">
+<!-- seo -->
+<link rel="canonical" href="https://uxgnod.github.io/vibe-hero/zh/glossary.html">
+<link rel="alternate" hreflang="zh-CN" href="https://uxgnod.github.io/vibe-hero/zh/glossary.html">
+<link rel="alternate" hreflang="en" href="https://uxgnod.github.io/vibe-hero/en/glossary.html">
+<link rel="alternate" hreflang="x-default" href="https://uxgnod.github.io/vibe-hero/en/glossary.html">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Vibe Hero">
+<meta property="og:title" content="术语表与学习计划 · Vibe Hero">
+<meta property="og:description" content="中英术语对照表、8 周学习计划、能力自查清单与官方资源索引。">
+<meta property="og:url" content="https://uxgnod.github.io/vibe-hero/zh/glossary.html">
+<meta property="og:image" content="https://uxgnod.github.io/vibe-hero/assets/og-image.png">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:locale:alternate" content="en_US">
+<meta name="twitter:card" content="summary_large_image">
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "TechArticle", "headline": "术语表与学习计划", "description": "中英术语对照表、8 周学习计划、能力自查清单与官方资源索引。", "inLanguage": "zh-CN", "url": "https://uxgnod.github.io/vibe-hero/zh/glossary.html", "image": "https://uxgnod.github.io/vibe-hero/assets/og-image.png", "dateModified": "2026-09-26", "author": {"@type": "Person", "name": "uxgnod", "url": "https://github.com/uxgnod"}, "isPartOf": {"@type": "WebSite", "name": "Vibe Hero", "url": "https://uxgnod.github.io/vibe-hero/"}}</script>
+<link rel="icon" href="../assets/favicon.svg">
+<link rel="stylesheet" href="../assets/style.css">
+<script>try{var t=localStorage.getItem('vh-theme');if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+<script defer src="../assets/app.js"></script>
+<script defer src="../assets/widgets.js"></script>
+</head>
+<body>
+<main class="content"><article class="doc">
+
+<p class="eyebrow">CHAPTER 15 · 附录</p>
+<h1>术语表与学习计划</h1>
+<p class="lead">这一章是工具箱：一份可以随时查阅的术语对照表，一份把全书串起来的 8 周计划，以及一份检验自己是否真正掌握的能力清单。</p>
+<div class="meta"><span>随时查阅</span></div>
+
+<h2 id="glossary">术语对照表</h2>
+
+<p>按领域分组。“章节”列指向首次详细解释该术语的地方。和 Agent 沟通时，中英文术语都可以使用——模型对两者都理解，但英文术语在搜索文档和报错信息时更有用。</p>
+
+<h3>语言与运行时</h3>
+<table>
+  <thead><tr><th>中文</th><th>English</th><th>一句话解释</th><th>章节</th></tr></thead>
+  <tbody>
+    <tr><td>运行时</td><td>Runtime</td><td>执行 JS 并提供宿主 API 的环境：浏览器、Node、Bun、Deno、workerd</td><td>01</td></tr>
+    <tr><td>类型擦除</td><td>Type erasure</td><td>TS 类型只在编译期存在，运行时完全消失</td><td>01 / 04</td></tr>
+    <tr><td>类型剥离</td><td>Type stripping</td><td>只删除类型标注、不做类型检查的转译方式（Node 内置）</td><td>01</td></tr>
+    <tr><td>打包器</td><td>Bundler</td><td>合并、摇树、分割、压缩代码的工具：Vite / Rolldown、Turbopack</td><td>01</td></tr>
+    <tr><td>摇树</td><td>Tree shaking</td><td>删除未被使用的导出代码</td><td>01</td></tr>
+    <tr><td>锁文件</td><td>Lockfile</td><td>记录依赖确切版本的文件，保证可复现安装</td><td>01 / 02</td></tr>
+    <tr><td>事件循环</td><td>Event loop</td><td>同步代码 → 清空微任务 → 取一个宏任务，循环往复</td><td>03</td></tr>
+    <tr><td>微任务 / 宏任务</td><td>Microtask / Task (macrotask)</td><td>Promise 回调 / 计时器、I/O、事件回调</td><td>03</td></tr>
+    <tr><td>漂浮的 Promise</td><td>Floating promise</td><td>没有被 await 或处理的 Promise，错误会被吞掉</td><td>03</td></tr>
+    <tr><td>闭包</td><td>Closure</td><td>函数记住其创建时作用域中的变量</td><td>03</td></tr>
+    <tr><td>不可变更新</td><td>Immutable update</td><td>创建新对象 / 数组而不是修改原值</td><td>03 / 06</td></tr>
+    <tr><td>ES 模块 / CommonJS</td><td>ESM / CJS</td><td>现代的 import/export / 旧的 require 模块系统</td><td>03</td></tr>
+  </tbody>
+</table>
+
+<h3>类型系统</h3>
+<table>
+  <thead><tr><th>中文</th><th>English</th><th>一句话解释</th><th>章节</th></tr></thead>
+  <tbody>
+    <tr><td>结构化类型</td><td>Structural typing</td><td>按形状判断兼容性，而不是按声明关系</td><td>04</td></tr>
+    <tr><td>联合类型</td><td>Union type</td><td><code>A | B</code>：值可能是其中任意一种</td><td>04</td></tr>
+    <tr><td>类型收窄</td><td>Narrowing</td><td>编译器根据判断语句在不同位置给出更精确的类型</td><td>04</td></tr>
+    <tr><td>判别联合</td><td>Discriminated union</td><td>用共同的字面量字段区分多种形状</td><td>04</td></tr>
+    <tr><td>穷尽检查</td><td>Exhaustiveness check</td><td>用 <code>never</code> 确保所有分支都被处理</td><td>04</td></tr>
+    <tr><td>泛型</td><td>Generics</td><td>对待定类型保持通用并保留类型信息</td><td>04</td></tr>
+    <tr><td>类型断言</td><td>Type assertion (<code>as</code>)</td><td>告诉编译器“相信我”，不做任何检查</td><td>04</td></tr>
+    <tr><td>运行时校验</td><td>Runtime validation</td><td>用 Zod 等在边界检查真实数据</td><td>04</td></tr>
+    <tr><td>单一事实来源</td><td>Single source of truth</td><td>只定义一次，其余全部推导</td><td>04 / 08</td></tr>
+  </tbody>
+</table>
+
+<h3>Web 与前端</h3>
+<table>
+  <thead><tr><th>中文</th><th>English</th><th>一句话解释</th><th>章节</th></tr></thead>
+  <tbody>
+    <tr><td>同源策略 / 跨源资源共享</td><td>Same-origin policy / CORS</td><td>浏览器限制跨源读取；服务器通过响应头声明豁免</td><td>05</td></tr>
+    <tr><td>预检请求</td><td>Preflight request</td><td>跨源非简单请求前的 OPTIONS 确认</td><td>05</td></tr>
+    <tr><td>跨站脚本 / 跨站请求伪造</td><td>XSS / CSRF</td><td>注入脚本执行 / 借用户 Cookie 发起请求</td><td>05</td></tr>
+    <tr><td>文档对象模型</td><td>DOM</td><td>浏览器中表示页面的对象树</td><td>05</td></tr>
+    <tr><td>可访问性</td><td>Accessibility (a11y)</td><td>让键盘、屏幕阅读器等方式都能使用界面</td><td>05</td></tr>
+    <tr><td>响应式断点</td><td>Responsive breakpoint</td><td>按屏幕宽度切换布局的阈值</td><td>05</td></tr>
+    <tr><td>组件 / 属性 / 状态</td><td>Component / Props / State</td><td>返回界面的函数 / 父传子的只读参数 / React 保管的数据</td><td>06</td></tr>
+    <tr><td>协调 / 比对</td><td>Reconciliation</td><td>比较新旧元素树，计算最小的 DOM 变更</td><td>06</td></tr>
+    <tr><td>提升状态</td><td>Lifting state up</td><td>把共享状态移到最近的共同父组件</td><td>06</td></tr>
+    <tr><td>派生状态</td><td>Derived state</td><td>能从其他数据算出的值，不应单独存储</td><td>06</td></tr>
+    <tr><td>副作用 / 清理函数</td><td>Effect / Cleanup</td><td>渲染后与外部系统同步 / 撤销上一次同步</td><td>06</td></tr>
+    <tr><td>受控 / 非受控输入</td><td>Controlled / Uncontrolled input</td><td>值由 state 驱动 / 由浏览器保存</td><td>06</td></tr>
+    <tr><td>乐观更新</td><td>Optimistic update</td><td>服务器确认前先显示预期结果，失败再回滚</td><td>06</td></tr>
+    <tr><td>服务器状态</td><td>Server state</td><td>远端数据的本地缓存（TanStack Query 管理的对象）</td><td>06</td></tr>
+    <tr><td>防抖 / 节流</td><td>Debounce / Throttle</td><td>停止触发一段时间后才执行 / 限制执行频率</td><td>06</td></tr>
+  </tbody>
+</table>
+
+<h3>渲染与全栈</h3>
+<table>
+  <thead><tr><th>中文</th><th>English</th><th>一句话解释</th><th>章节</th></tr></thead>
+  <tbody>
+    <tr><td>客户端 / 服务端渲染</td><td>CSR / SSR</td><td>HTML 在浏览器 / 服务器生成</td><td>07</td></tr>
+    <tr><td>静态生成 / 增量静态再生</td><td>SSG / ISR</td><td>构建时生成 / 生成后缓存并定期更新</td><td>07</td></tr>
+    <tr><td>流式渲染</td><td>Streaming SSR</td><td>先发外壳，慢的部分随后流入</td><td>07</td></tr>
+    <tr><td>水合</td><td>Hydration</td><td>客户端复用服务器 HTML 并绑定事件</td><td>07</td></tr>
+    <tr><td>服务器组件 / 客户端组件</td><td>Server / Client Components (RSC)</td><td>只在服务器存在 / 代码发送到浏览器</td><td>07</td></tr>
+    <tr><td>服务器函数</td><td>Server Function / Server Action</td><td>可从客户端调用、在服务器执行的函数（本质是网络端点）</td><td>07</td></tr>
+    <tr><td>请求瀑布</td><td>Request waterfall</td><td>本可并行的请求被串行执行</td><td>03 / 07</td></tr>
+    <tr><td>元框架</td><td>Meta-framework</td><td>在 UI 库之上提供路由、渲染、数据加载的全栈框架</td><td>01 / 07</td></tr>
+    <tr><td>端到端类型安全</td><td>End-to-end type safety</td><td>类型从数据库一路推导到界面</td><td>08</td></tr>
+    <tr><td>迁移</td><td>Migration</td><td>对数据库结构的版本化变更</td><td>08</td></tr>
+    <tr><td>认证 / 授权</td><td>Authentication / Authorization</td><td>你是谁 / 你能做什么</td><td>08</td></tr>
+    <tr><td>不安全的直接对象引用</td><td>IDOR</td><td>只校验登录，未校验资源归属</td><td>08</td></tr>
+    <tr><td>幂等</td><td>Idempotency</td><td>重复执行不产生重复效果</td><td>08</td></tr>
+    <tr><td>指数退避</td><td>Exponential backoff</td><td>失败后等待时间成倍增长再重试</td><td>08</td></tr>
+    <tr><td>死信队列</td><td>Dead-letter queue (DLQ)</td><td>多次失败的消息的隔离区</td><td>14</td></tr>
+  </tbody>
+</table>
+
+<h3>部署与工程化</h3>
+<table>
+  <thead><tr><th>中文</th><th>English</th><th>一句话解释</th><th>章节</th></tr></thead>
+  <tbody>
+    <tr><td>无服务器</td><td>Serverless</td><td>按需启动实例、按用量计费、无需管理服务器</td><td>09</td></tr>
+    <tr><td>边缘计算</td><td>Edge computing</td><td>在离用户最近的节点执行代码</td><td>09</td></tr>
+    <tr><td>冷启动</td><td>Cold start</td><td>新实例首次处理请求时的启动延迟</td><td>09</td></tr>
+    <tr><td>隔离沙箱</td><td>V8 isolate</td><td>比容器更轻量的执行隔离单元（Cloudflare Workers）</td><td>09</td></tr>
+    <tr><td>绑定</td><td>Binding</td><td>通过 <code>env</code> 注入给 Worker 的资源</td><td>09</td></tr>
+    <tr><td>预览部署</td><td>Preview deployment</td><td>每个 PR 自动生成的独立环境</td><td>09</td></tr>
+    <tr><td>完成定义</td><td>Definition of Done</td><td>任务被视为完成需满足的检查清单</td><td>10</td></tr>
+    <tr><td>端到端测试</td><td>E2E test</td><td>用真实浏览器模拟用户操作的测试</td><td>10</td></tr>
+    <tr><td>持续集成</td><td>CI</td><td>每次提交自动运行检查</td><td>10</td></tr>
+    <tr><td>可观测性</td><td>Observability</td><td>日志、指标、追踪，用于了解线上系统状态</td><td>10</td></tr>
+  </tbody>
+</table>
+
+<h3>AI 与 Agent</h3>
+<table>
+  <thead><tr><th>中文</th><th>English</th><th>一句话解释</th><th>章节</th></tr></thead>
+  <tbody>
+    <tr><td>词元</td><td>Token</td><td>模型处理和计费的文本单位</td><td>11</td></tr>
+    <tr><td>上下文窗口</td><td>Context window</td><td>单次请求可容纳的 token 上限</td><td>11</td></tr>
+    <tr><td>首 token 时间</td><td>Time to first token (TTFT)</td><td>从请求到第一个 token 到达的时间</td><td>11</td></tr>
+    <tr><td>结构化输出</td><td>Structured output</td><td>按 schema 约束模型返回 JSON</td><td>11</td></tr>
+    <tr><td>工具调用</td><td>Tool calling / Function calling</td><td>模型请求你的代码执行某个函数</td><td>11</td></tr>
+    <tr><td>嵌入向量</td><td>Embedding</td><td>把文本映射为向量，语义相近则距离近</td><td>11</td></tr>
+    <tr><td>检索增强生成</td><td>RAG</td><td>先检索相关资料，再让模型基于它们生成</td><td>11</td></tr>
+    <tr><td>提示缓存</td><td>Prompt caching</td><td>重复的请求前缀以更低成本和延迟处理</td><td>11</td></tr>
+    <tr><td>评估</td><td>Evals</td><td>用样本集和评分规则衡量 AI 功能质量</td><td>11</td></tr>
+    <tr><td>提示注入</td><td>Prompt injection</td><td>数据中夹带指令以劫持模型行为</td><td>11</td></tr>
+    <tr><td>智能体</td><td>Agent</td><td>模型在循环中使用工具直到完成目标</td><td>12</td></tr>
+    <tr><td>挽具 / 外围框架</td><td>Harness</td><td>模型之外的一切：指令、工具、上下文管理、权限、反馈</td><td>12</td></tr>
+    <tr><td>上下文工程</td><td>Context engineering</td><td>决定每一轮上下文中放什么</td><td>12</td></tr>
+    <tr><td>压缩</td><td>Compaction</td><td>把早期上下文总结为摘要以腾出空间</td><td>12</td></tr>
+    <tr><td>子智能体</td><td>Subagent</td><td>拥有独立上下文的子任务执行者</td><td>12</td></tr>
+    <tr><td>模型上下文协议</td><td>MCP</td><td>把工具和数据接入 Agent 宿主的开放协议</td><td>12</td></tr>
+    <tr><td>技能 / 钩子</td><td>Skills / Hooks</td><td>按需加载的专业说明 / 生命周期中确定执行的脚本</td><td>12</td></tr>
+    <tr><td>人在回路</td><td>Human-in-the-loop</td><td>关键步骤需要人确认</td><td>12</td></tr>
+    <tr><td>规格 / 验收标准</td><td>Spec / Acceptance criteria</td><td>描述要做什么以及如何判断完成</td><td>13</td></tr>
+    <tr><td>纵向切片</td><td>Vertical slice</td><td>端到端可运行的最小功能增量</td><td>13</td></tr>
+  </tbody>
+</table>
+
+<h2 id="plan">8 周学习计划</h2>
+
+<p>按每周 8～10 小时设计。每周都有一个 LinkNote 里程碑——<strong>交付一个能跑的东西</strong>比读完所有章节更重要。</p>
+
+<table>
+  <thead><tr><th>周</th><th>阅读</th><th>动手（LinkNote 里程碑）</th><th>本周检验</th></tr></thead>
+  <tbody>
+    <tr><td>1</td><td>00、01、02</td><td>装好环境；跑通 hello.ts；创建 Vite + React 项目；写第一版 AGENTS.md</td><td>能解释 tsc 与 node 运行 .ts 的区别</td></tr>
+    <tr><td>2</td><td>03、04</td><td>写一个批量抓取网页标题的脚本：并发上限、超时、allSettled；用 Zod 定义 Bookmark 判别联合</td><td>能预测事件循环输出顺序；代码中没有 any</td></tr>
+    <tr><td>3</td><td>05、06</td><td>用假数据做出列表页：卡片、标签筛选（URL 状态）、空状态、添加表单</td><td>能说出每一份状态住在哪里、为什么</td></tr>
+    <tr><td>4</td><td>07、08</td><td>迁移到 Next.js 或 TanStack Start；接入数据库（Drizzle）和登录；实现增删查</td><td>能画出一次请求经过的层与类型来源；删除接口防 IDOR</td></tr>
+    <tr><td>5</td><td>09、10</td><td>部署上线（任选一个平台）；配置 CI；补齐单元测试和一个 E2E 测试</td><td>有一个公网可访问的地址；PR 上 CI 自动运行</td></tr>
+    <tr><td>6</td><td>11</td><td>异步摘要生成：队列 + 结构化输出 + 状态更新；流式“问我的收藏”（只读工具）</td><td>建了 20 条样本的评估集；知道单次摘要的成本</td></tr>
+    <tr><td>7</td><td>12、13</td><td>把“问我的收藏”升级为 Agent；为项目写 Skill 或 Hook；用六要素模板完成一个新功能</td><td>一个功能从规格到合并，一次完成</td></tr>
+    <tr><td>8</td><td>14，复习</td><td>为 LinkNote 写一份设计文档（含估算）；练习 5 道面试题（对着录音回答）</td><td>能在 45 分钟内讲完 LinkNote 的系统设计</td></tr>
+  </tbody>
+</table>
+
+<div class="callout warn">
+  <span class="callout-title">计划的正确用法</span>
+  <p>这是参考节奏，不是必须严格遵守的课表。如果你已经有明确的项目要做，就用自己的项目替代 LinkNote，按同样的顺序推进。最重要的原则只有一条：<strong>每周都交付一个能运行的东西</strong>，不要连续几周只读不做，也不要花一周时间“搭建完美的学习环境”。</p>
+</div>
+
+<h2 id="checklist">能力自查清单</h2>
+
+<p>勾选你能<strong>不看资料、用自己的话</strong>做到的项目（勾选状态保存在你的浏览器本地）。</p>
+
+<div id="vh-checklist">
+<h3>原理层（必须）</h3>
+<ul class="checklist">
+  <li><label><input type="checkbox" data-k="c1"> 预测一段含 setTimeout / Promise / await 的代码输出顺序并解释</label></li>
+  <li><label><input type="checkbox" data-k="c2"> 解释为什么 Node 单线程能处理高并发，以及什么会阻塞它</label></li>
+  <li><label><input type="checkbox" data-k="c3"> 解释类型擦除，并说出至少三类必须运行时校验的数据</label></li>
+  <li><label><input type="checkbox" data-k="c4"> 用判别联合建模一个多状态实体并写出穷尽检查</label></li>
+  <li><label><input type="checkbox" data-k="c5"> 解释 CORS 为什么存在，以及带 Cookie 的跨源请求如何配置</label></li>
+  <li><label><input type="checkbox" data-k="c6"> 说出一次 setState 之后 React 内部的完整流程</label></li>
+  <li><label><input type="checkbox" data-k="c7"> 判断一个 useEffect 是否必要，并给出替代写法</label></li>
+  <li><label><input type="checkbox" data-k="c8"> 区分 SSR 与 RSC，解释水合不匹配的原因</label></li>
+  <li><label><input type="checkbox" data-k="c9"> 指出一段代码在 serverless 平台上会失效的地方</label></li>
+  <li><label><input type="checkbox" data-k="c10"> 画出工具调用的往返流程，并说明执行权在哪里</label></li>
+  <li><label><input type="checkbox" data-k="c11"> 解释上下文工程的主要手段</label></li>
+  <li><label><input type="checkbox" data-k="c12"> 说出提示注入的原理和至少三条防御措施</label></li>
+</ul>
+<h3>实践层</h3>
+<ul class="checklist">
+  <li><label><input type="checkbox" data-k="p1"> 从零创建并部署一个带数据库和登录的全栈应用</label></li>
+  <li><label><input type="checkbox" data-k="p2"> 配置 CI：类型检查、Lint、测试、构建</label></li>
+  <li><label><input type="checkbox" data-k="p3"> 实现一个流式 AI 对话，带一个只读工具</label></li>
+  <li><label><input type="checkbox" data-k="p4"> 用 Zod 约束 LLM 结构化输出并处理失败</label></li>
+  <li><label><input type="checkbox" data-k="p5"> 为 AI 功能建立一个小评估集</label></li>
+  <li><label><input type="checkbox" data-k="p6"> 用六要素模板写任务说明，让 Agent 一次完成一个功能</label></li>
+  <li><label><input type="checkbox" data-k="p7"> 用审查清单在 10 分钟内审完一个 Agent 的 PR，并发现至少一个问题</label></li>
+  <li><label><input type="checkbox" data-k="p8"> 把一次重复纠正沉淀为 AGENTS.md 条目、Hook 或 Lint 规则</label></li>
+</ul>
+</div>
+<script>
+(function () {
+  var box = document.getElementById('vh-checklist');
+  var state = {};
+  try { state = JSON.parse(localStorage.getItem('vh-checklist') || '{}'); } catch (e) {}
+  box.querySelectorAll('input[type=checkbox]').forEach(function (cb) {
+    cb.checked = !!state[cb.dataset.k];
+    cb.addEventListener('change', function () {
+      state[cb.dataset.k] = cb.checked;
+      try { localStorage.setItem('vh-checklist', JSON.stringify(state)); } catch (e) {}
+    });
+  });
+})();
+</script>
+<style>
+  .checklist { list-style: none; padding-left: 0 !important; }
+  .checklist li { margin: .4em 0; }
+  .checklist label { display: flex; gap: 10px; align-items: flex-start; cursor: pointer; }
+  .checklist input { margin-top: .45em; width: 16px; height: 16px; accent-color: var(--accent); flex: none; }
+</style>
+
+<h2 id="resources">官方资源索引</h2>
+
+<p>版本变化快，遇到具体 API 时以官方文档为准。也可以把这些链接直接交给 Agent，让它先读文档再写代码。</p>
+
+<table>
+  <thead><tr><th>领域</th><th>资源</th></tr></thead>
+  <tbody>
+    <tr><td>JavaScript / Web 平台</td><td><a href="https://developer.mozilla.org/" rel="noopener">MDN Web Docs</a></td></tr>
+    <tr><td>TypeScript</td><td><a href="https://www.typescriptlang.org/docs/" rel="noopener">typescriptlang.org/docs</a>（Handbook）</td></tr>
+    <tr><td>Node.js</td><td><a href="https://nodejs.org/docs/latest/api/" rel="noopener">nodejs.org/docs</a></td></tr>
+    <tr><td>React</td><td><a href="https://react.dev/learn" rel="noopener">react.dev/learn</a>（尤其是 “You Might Not Need an Effect”）</td></tr>
+    <tr><td>Next.js</td><td><a href="https://nextjs.org/docs" rel="noopener">nextjs.org/docs</a></td></tr>
+    <tr><td>TanStack（Start / Router / Query）</td><td><a href="https://tanstack.com/" rel="noopener">tanstack.com</a></td></tr>
+    <tr><td>Vite</td><td><a href="https://vite.dev/" rel="noopener">vite.dev</a></td></tr>
+    <tr><td>Tailwind CSS / shadcn/ui</td><td><a href="https://tailwindcss.com/docs" rel="noopener">tailwindcss.com/docs</a> · <a href="https://ui.shadcn.com/" rel="noopener">ui.shadcn.com</a></td></tr>
+    <tr><td>Zod</td><td><a href="https://zod.dev/" rel="noopener">zod.dev</a></td></tr>
+    <tr><td>Drizzle ORM</td><td><a href="https://orm.drizzle.team/" rel="noopener">orm.drizzle.team</a></td></tr>
+    <tr><td>Hono</td><td><a href="https://hono.dev/" rel="noopener">hono.dev</a></td></tr>
+    <tr><td>Better Auth</td><td><a href="https://www.better-auth.com/" rel="noopener">better-auth.com</a></td></tr>
+    <tr><td>Vercel</td><td><a href="https://vercel.com/docs" rel="noopener">vercel.com/docs</a></td></tr>
+    <tr><td>Cloudflare Workers</td><td><a href="https://developers.cloudflare.com/workers/" rel="noopener">developers.cloudflare.com/workers</a> · <a href="https://developers.cloudflare.com/agents/" rel="noopener">Agents SDK</a></td></tr>
+    <tr><td>Vitest / Playwright</td><td><a href="https://vitest.dev/" rel="noopener">vitest.dev</a> · <a href="https://playwright.dev/" rel="noopener">playwright.dev</a></td></tr>
+    <tr><td>AI SDK</td><td><a href="https://ai-sdk.dev/" rel="noopener">ai-sdk.dev</a></td></tr>
+    <tr><td>Claude API</td><td><a href="https://platform.claude.com/docs" rel="noopener">platform.claude.com/docs</a></td></tr>
+    <tr><td>Claude Code</td><td><a href="https://code.claude.com/docs" rel="noopener">code.claude.com/docs</a></td></tr>
+    <tr><td>Model Context Protocol</td><td><a href="https://modelcontextprotocol.io/" rel="noopener">modelcontextprotocol.io</a></td></tr>
+    <tr><td>pi coding agent</td><td><a href="https://github.com/badlogic/pi-mono" rel="noopener">github.com/badlogic/pi-mono</a></td></tr>
+  </tbody>
+</table>
+
+<h2 id="closing">最后</h2>
+
+<p>回到第 00 章的类比：从汇编到面向对象，工程师写的代码变少了，但对“系统如何运作”的理解要求并没有降低，反而扩展到了更高的层次。今天的转换也一样。Agent 会越来越强，但<strong>知道要什么、说得清楚、判断得了对错</strong>，这三件事始终是你的。</p>
+
+<p>祝你构建出自己想要的东西。</p>
+
+</article></main>
+</body>
+</html>

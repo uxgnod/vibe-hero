@@ -1,0 +1,351 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>生态全景地图 · Vibe Hero</title>
+<meta name="description" content="TypeScript 生态的分层地图：语言、类型检查、转译、打包、运行时、包管理、框架与平台，以及 2026 年的三条主流技术路线。">
+<!-- seo -->
+<link rel="canonical" href="https://uxgnod.github.io/vibe-hero/zh/landscape.html">
+<link rel="alternate" hreflang="zh-CN" href="https://uxgnod.github.io/vibe-hero/zh/landscape.html">
+<link rel="alternate" hreflang="en" href="https://uxgnod.github.io/vibe-hero/en/landscape.html">
+<link rel="alternate" hreflang="x-default" href="https://uxgnod.github.io/vibe-hero/en/landscape.html">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Vibe Hero">
+<meta property="og:title" content="生态全景地图 · Vibe Hero">
+<meta property="og:description" content="TypeScript 生态的分层地图：语言、类型检查、转译、打包、运行时、包管理、框架与平台，以及 2026 年的三条主流技术路线。">
+<meta property="og:url" content="https://uxgnod.github.io/vibe-hero/zh/landscape.html">
+<meta property="og:image" content="https://uxgnod.github.io/vibe-hero/assets/og-image.png">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:locale:alternate" content="en_US">
+<meta name="twitter:card" content="summary_large_image">
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "TechArticle", "headline": "生态全景地图", "description": "TypeScript 生态的分层地图：语言、类型检查、转译、打包、运行时、包管理、框架与平台，以及 2026 年的三条主流技术路线。", "inLanguage": "zh-CN", "url": "https://uxgnod.github.io/vibe-hero/zh/landscape.html", "image": "https://uxgnod.github.io/vibe-hero/assets/og-image.png", "dateModified": "2026-09-26", "author": {"@type": "Person", "name": "uxgnod", "url": "https://github.com/uxgnod"}, "isPartOf": {"@type": "WebSite", "name": "Vibe Hero", "url": "https://uxgnod.github.io/vibe-hero/"}}</script>
+<link rel="icon" href="../assets/favicon.svg">
+<link rel="stylesheet" href="../assets/style.css">
+<script>try{var t=localStorage.getItem('vh-theme');if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+<script defer src="../assets/app.js"></script>
+<script defer src="../assets/widgets.js"></script>
+</head>
+<body>
+<main class="content"><article class="doc">
+
+<p class="eyebrow">CHAPTER 01 · 起步</p>
+<h1>生态全景地图</h1>
+<p class="lead">TS 生态之所以让人眼花缭乱，是因为 Java 里一个 JDK 包办的事情，在这里被拆成了五六个可替换的工具。拆开看每一层，其实都能在你熟悉的世界里找到对应物。</p>
+<div class="meta"><span>⏱ 约 30 分钟</span><span class="badge use">会用</span><span class="badge aware">知道</span><span>其中“类型检查 ≠ 转译”是 <span class="badge deep">原理</span></span></div>
+
+<div class="goals">
+  <div class="goals-title">读完本章，你应该能够：</div>
+  <ul>
+    <li>看到 <code>node</code>、<code>pnpm</code>、<code>tsc</code>、<code>vite</code>、<code>next</code>、<code>wrangler</code> 这些命令时，说出它们分别处于哪一层。</li>
+    <li>解释为什么“代码能运行”不代表“类型是正确的”。</li>
+    <li>说出 2026 年三条主流技术路线（Vercel / Cloudflare / 自托管）的典型组合及它们的共同部分。</li>
+  </ul>
+</div>
+
+<h2 id="question">开场：一个项目，七八个命令</h2>
+
+<div class="callout question">
+  <span class="callout-title">开场问题</span>
+  <p>你让 Agent 生成了一个项目，<code>package.json</code> 的 scripts 里写着：<code>"dev": "vite dev"</code>、<code>"build": "vite build"</code>、<code>"typecheck": "tsc --noEmit"</code>、<code>"deploy": "wrangler deploy"</code>。你用 <code>pnpm</code> 安装依赖，用 <code>node</code> 运行脚本。<strong>为什么需要这么多工具？只写 TypeScript 然后“编译运行”不行吗？</strong></p>
+</div>
+
+<p><strong>答案方向：</strong>把 TS 源码变成“用户能用的应用”，要经过一条流水线：<em>管理依赖 → 检查类型 → 去掉类型 → 打包优化 → 在某个运行时上执行 → 发布到某个平台</em>。在 Java 世界，JDK + Maven 把其中大部分合在一起；在 TS 世界，每一步都有独立的、可替换的工具。上面每个命令，就是流水线上的一个工位。</p>
+
+<h2 id="mapping">先用你熟悉的世界做对照</h2>
+
+<p>下表把 TS 生态的每一层映射到 Java / Go / Python。这张表是整章的“锚点”，后面每一节都是在展开其中一行。</p>
+
+<table>
+  <thead><tr><th>层</th><th>Java / Go / Python</th><th>TypeScript 生态</th><th>深度</th></tr></thead>
+  <tbody>
+    <tr><td>语言</td><td>Java / Go / Python</td><td>TypeScript（= JavaScript + 类型标注）</td><td><span class="badge deep">原理</span></td></tr>
+    <tr><td>类型检查</td><td>javac / go build（检查与编译一体）</td><td><code>tsc</code>（只检查，通常不产出文件）</td><td><span class="badge deep">原理</span></td></tr>
+    <tr><td>转译（去类型）</td><td>—（编译器一起做了）</td><td>esbuild、SWC、Oxc、Node 内置的类型剥离</td><td><span class="badge aware">知道</span></td></tr>
+    <tr><td>运行时</td><td>JVM / Go runtime / CPython</td><td>Node.js、Bun、Deno、浏览器、Cloudflare workerd</td><td><span class="badge use">会用</span></td></tr>
+    <tr><td>包管理</td><td>Maven / go mod / pip、uv</td><td>pnpm、npm、bun（仓库：npm registry）</td><td><span class="badge use">会用</span></td></tr>
+    <tr><td>打包</td><td>打 jar / 静态二进制</td><td>Vite（内部用 Rolldown）、Turbopack（Next.js）</td><td><span class="badge aware">知道</span></td></tr>
+    <tr><td>Web 后端框架</td><td>Spring / Gin / FastAPI</td><td>Hono、Express、Fastify、NestJS</td><td><span class="badge use">会用</span></td></tr>
+    <tr><td>全栈框架</td><td>Rails / Django（有模板）</td><td>Next.js、TanStack Start、React Router</td><td><span class="badge use">会用</span></td></tr>
+    <tr><td>UI 库</td><td>模板引擎 / 无</td><td>React（另有 Vue、Svelte、Solid）</td><td><span class="badge deep">原理</span></td></tr>
+    <tr><td>ORM</td><td>Hibernate / GORM / SQLAlchemy</td><td>Drizzle、Prisma</td><td><span class="badge use">会用</span></td></tr>
+    <tr><td>测试</td><td>JUnit / go test / pytest</td><td>Vitest（单元）、Playwright（端到端）</td><td><span class="badge use">会用</span></td></tr>
+    <tr><td>格式化 / Lint</td><td>gofmt / black / ruff</td><td>Biome、Prettier、ESLint、Oxlint</td><td><span class="badge aware">知道</span></td></tr>
+    <tr><td>部署平台</td><td>K8s / 云主机</td><td>Vercel、Cloudflare、自托管 Docker</td><td><span class="badge use">会用</span></td></tr>
+  </tbody>
+</table>
+
+<p>有两行在你熟悉的世界里没有真正的对应物，也正是新人最容易糊涂的地方：<strong>“类型检查与转译分离”</strong>和<strong>“打包”</strong>。我们先讲它们。</p>
+
+<h2 id="pipeline">流水线：从 .ts 文件到运行中的应用</h2>
+
+<figure class="diagram">
+<div class="diagram-scroll">
+<svg viewBox="0 0 780 300" role="img" aria-label="TypeScript 构建流水线">
+  <defs>
+    <marker id="a1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="ar-fill"/></marker>
+    <marker id="a2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="ar-deep"/></marker>
+  </defs>
+  <rect x="10" y="110" width="120" height="70" rx="10" class="box-accent"/>
+  <text x="70" y="140" text-anchor="middle" font-weight="700" font-size="14">源码</text>
+  <text x="70" y="160" text-anchor="middle" font-size="12" class="t-mono t-soft">.ts / .tsx</text>
+
+  <rect x="180" y="20" width="170" height="70" rx="10" class="box-deep"/>
+  <text x="265" y="48" text-anchor="middle" font-weight="700" font-size="13.5">类型检查 tsc</text>
+  <text x="265" y="68" text-anchor="middle" font-size="11.5" class="t-soft">只报错，不产出代码</text>
+
+  <rect x="180" y="110" width="170" height="70" rx="10" class="box"/>
+  <text x="265" y="138" text-anchor="middle" font-weight="700" font-size="13.5">转译：剥离类型</text>
+  <text x="265" y="158" text-anchor="middle" font-size="11.5" class="t-soft">esbuild / Oxc / Node</text>
+
+  <rect x="400" y="110" width="170" height="70" rx="10" class="box"/>
+  <text x="485" y="138" text-anchor="middle" font-weight="700" font-size="13.5">打包 bundler</text>
+  <text x="485" y="158" text-anchor="middle" font-size="11.5" class="t-soft">合并 · 拆分 · 压缩</text>
+
+  <rect x="620" y="60" width="150" height="60" rx="10" class="box-use"/>
+  <text x="695" y="86" text-anchor="middle" font-weight="700" font-size="13">浏览器产物</text>
+  <text x="695" y="104" text-anchor="middle" font-size="11" class="t-soft">JS · CSS · 资源</text>
+
+  <rect x="620" y="170" width="150" height="60" rx="10" class="box-purple"/>
+  <text x="695" y="196" text-anchor="middle" font-weight="700" font-size="13">服务器产物</text>
+  <text x="695" y="214" text-anchor="middle" font-size="11" class="t-soft">Node / Worker 代码</text>
+
+  <line x1="130" y1="135" x2="176" y2="60" class="ln-deep ln-dash" marker-end="url(#a2)"/>
+  <line x1="130" y1="145" x2="176" y2="145" class="ln" marker-end="url(#a1)"/>
+  <line x1="350" y1="145" x2="396" y2="145" class="ln" marker-end="url(#a1)"/>
+  <line x1="570" y1="135" x2="616" y2="95" class="ln" marker-end="url(#a1)"/>
+  <line x1="570" y1="155" x2="616" y2="195" class="ln" marker-end="url(#a1)"/>
+
+  <text x="265" y="220" text-anchor="middle" font-size="12" class="t-deep">两条路互不等待：</text>
+  <text x="265" y="238" text-anchor="middle" font-size="12" class="t-deep">类型有错，下面这条路照样能产出可运行代码</text>
+  <text x="485" y="220" text-anchor="middle" font-size="11.5" class="t-mute">开发时：dev server 按需转译，</text>
+  <text x="485" y="236" text-anchor="middle" font-size="11.5" class="t-mute">改一行，浏览器秒级热更新（HMR）</text>
+  <text x="390" y="285" text-anchor="middle" font-size="12" class="t-soft">Vite / Next.js 把“转译 + 打包 + 开发服务器”包成一个命令；tsc 通常单独在编辑器和 CI 里跑</text>
+</svg>
+</div>
+<figcaption>红色虚线是“类型检查”，它是旁路：它能阻止你合并代码（在 CI 里），但不参与生成产物。</figcaption>
+</figure>
+
+<h3>核心原理：类型检查和转译是两件事 <span class="badge deep">原理</span></h3>
+
+<p>在 Java 里，类型错误意味着编译失败，没有 .class 文件，程序根本跑不起来。TS 不一样。TypeScript 的设计目标之一是：<strong>类型只存在于编写阶段，运行时完全不存在</strong>。这叫<strong>类型擦除（type erasure）</strong>。转译器要做的事情简单到近乎机械：把类型标注删掉，剩下的就是合法的 JavaScript。</p>
+
+<script type="text/plain" class="code" data-lang="ts" data-title="src/price.ts（源码）">
+function total(price: number, qty: number): number {
+  return price * qty;
+}
+total("9.9", 2);   // tsc 报错：string 不能赋给 number
+</script>
+
+<script type="text/plain" class="code" data-lang="js" data-title="转译后（类型被删除）">
+function total(price, qty) {
+  return price * qty;
+}
+total("9.9", 2);   // 照样运行，结果 19.8 —— JS 把 "9.9" 隐式转成了数字
+</script>
+
+<p>正因为“删类型”不需要理解类型，esbuild、SWC 这类用 Go / Rust 写的转译器才能快到每秒处理几十万行代码。从 Node.js 23.6 起，Node 可以直接运行 <code>.ts</code> 文件（内置的类型剥离，type stripping），Node 26 更把它作为稳定的默认行为。但请注意：<strong>Node 只是删掉类型，它不做类型检查</strong>。</p>
+
+<div class="callout warn">
+  <span class="callout-title">这对你驾驭 Agent 意味着什么</span>
+  <p>Agent 说“我运行了一下，没问题”，只能说明转译后的 JS 能跑，不能说明类型正确。你的验收标准里应该<strong>明确要求类型检查通过</strong>（例如 <code>pnpm tsc --noEmit</code> 零错误），并且在 CI 里强制执行。第 10 章会把它变成流水线的一部分。</p>
+</div>
+
+<p>2026 年 7 月发布的 <strong>TypeScript 7</strong> 把编译器用 Go 重写为原生程序，大型项目类型检查快了约 10 倍。它改变的是速度，不是语言：你写的代码、类型规则都一样。对你的实际影响是：类型检查便宜了，没理由再跳过它。</p>
+
+<h3>为什么前端需要“打包” <span class="badge aware">知道</span></h3>
+
+<p>Go 把程序编译成一个二进制，服务器从本地磁盘加载，文件多大、分几个文件都无所谓。浏览器不一样：<strong>代码要通过网络下载到每个用户的设备上</strong>。一个项目可能有几千个模块文件（你的代码加上 node_modules 里的依赖），逐个下载会慢到无法接受。打包器（bundler）要解决的就是这个问题：</p>
+
+<ul>
+  <li><strong>合并</strong>：把几千个模块合成少量文件，减少请求数。</li>
+  <li><strong>摇树（tree shaking）</strong>：只保留真正被用到的代码，删掉没用到的导出。</li>
+  <li><strong>代码分割（code splitting）</strong>：按页面或路由拆分，首屏只下载首屏需要的代码。</li>
+  <li><strong>压缩（minify）</strong>：去空格、缩短变量名，减小体积。</li>
+  <li><strong>处理非 JS 资源</strong>：CSS、图片、字体，给文件名加内容哈希以便长期缓存。</li>
+</ul>
+
+<p>2026 年你最常遇到的两个名字：<strong>Vite</strong>（Vite 8 起内部统一使用 Rust 写的 Rolldown 打包器；TanStack Start、React Router、Astro、SvelteKit 等都基于它）和 <strong>Turbopack</strong>（Next.js 的默认打包器）。它们属于“知道”档：你几乎不需要手动配置，出问题时也通常是明确的构建报错。</p>
+
+<h2 id="runtimes">运行时：JS 代码实际在哪里执行</h2>
+
+<p>JavaScript 引擎（如 V8）只负责执行语言本身：变量、函数、对象。“读文件”“发网络请求”“操作页面”这些能力，是<strong>宿主环境</strong>提供的。不同的宿主环境，就是不同的运行时（runtime）。</p>
+
+<table>
+  <thead><tr><th>运行时</th><th>在哪里</th><th>特点</th><th>深度</th></tr></thead>
+  <tbody>
+    <tr><td><strong>浏览器</strong></td><td>用户设备</td><td>有 DOM（页面结构）、事件；没有文件系统；代码对用户完全可见</td><td><span class="badge deep">原理</span></td></tr>
+    <tr><td><strong>Node.js</strong></td><td>服务器 / 你的电脑</td><td>事实标准；生态最全；偶数版本是长期支持（LTS）版本</td><td><span class="badge use">会用</span></td></tr>
+    <tr><td><strong>Bun</strong></td><td>服务器 / 你的电脑</td><td>一体化：运行时 + 包管理 + 测试 + 打包；启动快；高度兼容 Node</td><td><span class="badge aware">知道</span></td></tr>
+    <tr><td><strong>Deno</strong></td><td>服务器 / 你的电脑</td><td>默认安全（需显式授权文件和网络访问）；兼容 npm 包</td><td><span class="badge aware">知道</span></td></tr>
+    <tr><td><strong>workerd</strong></td><td>Cloudflare 边缘节点</td><td>V8 isolate（隔离沙箱），启动极快；有 CPU 和内存限制；兼容大部分 Node API</td><td><span class="badge use">会用</span></td></tr>
+  </tbody>
+</table>
+
+<p>一个让这些运行时能共享代码的关键事实：它们都在向<strong>Web 标准 API</strong>靠拢——<code>fetch</code>、<code>Request</code>、<code>Response</code>、<code>URL</code>、<code>ReadableStream</code>、<code>crypto.subtle</code>。如果你的服务器代码只用这些标准 API，它就能在 Node、Bun、Deno 和 Cloudflare 上原样运行。这就是 Hono 这类框架“一份代码到处部署”的原理。</p>
+
+<script type="text/plain" class="code" data-lang="ts" data-title="只用 Web 标准 API 的请求处理函数">
+// 输入是标准 Request，输出是标准 Response —— 在任何现代运行时都成立
+export default {
+  async fetch(req: Request): Promise<Response> {
+    const url = new URL(req.url);
+    return Response.json({ path: url.pathname, time: Date.now() });
+  },
+};
+</script>
+
+<div class="callout analogy">
+  <span class="callout-title">类比</span>
+  <p>可以把 V8 想成 JVM 里的“字节码执行引擎”，把运行时想成“JDK 标准库 + 启动器”。Java 在服务器和 Android 上是同一门语言、不同的标准库；JS 在浏览器和 Node 上也是同一门语言、不同的宿主 API。<strong>类比的失配点：</strong>JS 没有统一的“标准库发行方”，各运行时 API 的交集才是可移植的部分。</p>
+</div>
+
+<h2 id="packages">包管理：package.json 和 node_modules</h2>
+
+<p>每个 JS/TS 项目的根目录有一个 <code>package.json</code>，相当于 <code>pom.xml</code> 或 <code>go.mod</code>：</p>
+
+<script type="text/plain" class="code" data-lang="json" data-title="package.json（节选）">
+{
+  "name": "linknote",
+  "type": "module",
+  "scripts": {
+    "dev": "vite dev",
+    "build": "vite build",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest"
+  },
+  "dependencies": {
+    "react": "^19.2.0",
+    "zod": "^4.1.0"
+  },
+  "devDependencies": {
+    "typescript": "^7.0.0",
+    "vitest": "^4.0.0"
+  }
+}
+</script>
+
+<ul>
+  <li><strong><code>scripts</code></strong>：项目的“命令菜单”。<code>pnpm dev</code> 就是运行 <code>vite dev</code>。读一个陌生项目时，先看这里。</li>
+  <li><strong><code>dependencies</code> vs <code>devDependencies</code></strong>：运行时需要的依赖 vs 只在开发和构建时需要的工具。</li>
+  <li><strong><code>^19.2.0</code></strong>：语义化版本（semver）范围，“兼容 19.2.0 的任何 19.x 版本”。实际装了哪个版本，由<strong>锁文件（lockfile）</strong>决定，例如 <code>pnpm-lock.yaml</code>。锁文件必须提交到 Git。</li>
+  <li><strong><code>"type": "module"</code></strong>：声明使用现代的 ES 模块（<code>import</code>/<code>export</code>），第 03 章会解释它和旧的 CommonJS（<code>require</code>）的区别。</li>
+</ul>
+
+<p><strong>用哪个包管理器？</strong>推荐 <strong>pnpm</strong>：它把所有包存在一个全局的内容寻址仓库里、通过链接复用，磁盘占用小、安装快；而且它的依赖结构是“严格”的——你没在 package.json 里声明的包，代码里就 import 不到，避免了“在我机器上能跑”的幽灵依赖。npm 是 Node 自带的默认选择；bun 速度很快，适合已经在用 Bun 运行时的项目。</p>
+
+<div class="callout warn">
+  <span class="callout-title">供应链安全（一定要知道）</span>
+  <p>npm 生态依赖层级很深，一个项目动辄上千个间接依赖，近几年多次发生恶意包、账号被盗后发布带毒版本的事件。几条最低限度的习惯：提交锁文件；CI 里用 <code>pnpm install --frozen-lockfile</code>；pnpm 10 起默认不执行依赖的安装脚本（postinstall），不要随手全局放开；让 Agent 新增依赖时，要求它说明<strong>为什么需要、周下载量、最近维护情况</strong>。</p>
+</div>
+
+<h2 id="frameworks">框架分层：谁管界面，谁管路由，谁管数据</h2>
+
+<p>“框架”这个词在 TS 生态里指代的东西差异很大。按职责分三层来看就清楚了：</p>
+
+<figure class="diagram">
+<div class="diagram-scroll">
+<svg viewBox="0 0 780 250" role="img" aria-label="框架分层">
+  <rect x="10" y="10" width="760" height="70" rx="10" class="box-accent"/>
+  <text x="30" y="38" font-weight="700" font-size="14">元框架 / 全栈框架（meta-framework）</text>
+  <text x="30" y="60" font-size="12" class="t-soft">路由 · 服务端渲染 · 数据加载 · 服务端函数 · 构建。例：Next.js、TanStack Start、React Router、Astro</text>
+  <rect x="10" y="95" width="370" height="70" rx="10" class="box-purple"/>
+  <text x="30" y="123" font-weight="700" font-size="14">UI 库</text>
+  <text x="30" y="145" font-size="12" class="t-soft">把状态变成界面。例：React（主流）、Vue、Svelte</text>
+  <rect x="400" y="95" width="370" height="70" rx="10" class="box-ok"/>
+  <text x="420" y="123" font-weight="700" font-size="14">后端 / API 框架</text>
+  <text x="420" y="145" font-size="12" class="t-soft">处理 HTTP 请求。例：Hono、Express、Fastify、NestJS</text>
+  <rect x="10" y="180" width="760" height="60" rx="10" class="box-soft"/>
+  <text x="30" y="206" font-weight="700" font-size="14">周边库</text>
+  <text x="30" y="226" font-size="12" class="t-soft">样式 Tailwind · 组件 shadcn/ui · 校验 Zod · 数据库 Drizzle/Prisma · 请求缓存 TanStack Query · 鉴权 Better Auth · AI 调用 AI SDK</text>
+</svg>
+</div>
+<figcaption>元框架“包着”UI 库，并内置了一个后端；你也可以不用元框架，单独用 UI 库 + 独立的后端框架。</figcaption>
+</figure>
+
+<p>和 Java 世界最大的不同在于：<strong>一个元框架项目同时是前端和后端</strong>。Next.js 应用里既有 React 组件，又有处理 HTTP 请求、读写数据库的服务端代码，它们在同一个仓库、同一种语言、甚至可以互相 import 类型。这带来巨大的便利（端到端类型安全，第 08 章），也带来新的风险（服务器代码被误打包进浏览器，第 07 章）。</p>
+
+<h2 id="stacks">2026 年的三条主流路线</h2>
+
+<p>下面三种组合覆盖了绝大多数新项目。它们的共同部分远大于差异：<strong>TypeScript + React + Tailwind + Zod + Drizzle + Vitest</strong> 在三条路线里都适用。差异主要在元框架和“运行在哪”。</p>
+
+<div class="cards">
+  <div class="card">
+    <h4>▲ Vercel 路线</h4>
+    <p><strong>Next.js</strong>（App Router、React Server Components、Server Actions）+ shadcn/ui + Postgres（Neon / Supabase）+ Better Auth 或 Clerk + AI SDK → 部署到 Vercel。</p>
+    <p class="muted" style="margin-top:6px">长处：资料最多、Agent 最熟悉、部署零配置。</p>
+  </div>
+  <div class="card">
+    <h4>☁ Cloudflare 路线</h4>
+    <p><strong>TanStack Start</strong> / React Router / <strong>Hono</strong> + Vite + D1（SQLite）/ KV / R2 + Durable Objects + Agents SDK → 部署到 Workers。</p>
+    <p class="muted" style="margin-top:6px">长处：成本低、全球低延迟、存储与有状态计算原生集成，适合 AI Agent 和实时应用。</p>
+  </div>
+  <div class="card">
+    <h4>🖥 自托管路线</h4>
+    <p>TanStack Start / Next.js（standalone 输出）/ Hono 跑在 Node 或 Bun 上 + Postgres + Redis → Docker 部署到 VPS（可用 Coolify、Dokploy、Kamal）。</p>
+    <p class="muted" style="margin-top:6px">长处：无平台限制、成本可预测、数据完全自控。</p>
+  </div>
+</div>
+
+<div class="callout tip">
+  <span class="callout-title">选择顺序的建议</span>
+  <p>先学共同部分，平台最后选。第一次做项目，<strong>选你能最快部署上线的那条</strong>——通常是 Vercel + Next.js（资料最多）或 Cloudflare + TanStack Start/Hono（成本最低）。第 09 章会给出更细的决策树。</p>
+</div>
+
+<h2 id="versions">版本快照（2026 年 9 月）</h2>
+
+<p>这张表会过时，但它能帮你判断 Agent 给出的代码是否“太旧”（模型的训练数据有截止时间，经常写出上一代 API）。</p>
+
+<table>
+  <thead><tr><th>项目</th><th>当前状态</th><th>对你意味着什么</th></tr></thead>
+  <tbody>
+    <tr><td>TypeScript</td><td>7.x（Go 原生编译器）</td><td>类型检查快约 10 倍，语言本身几乎不变</td></tr>
+    <tr><td>Node.js</td><td>24 为 LTS；26 于 2026 年 10 月转 LTS</td><td>可直接运行 .ts（只剥离类型）；新项目选最新 LTS</td></tr>
+    <tr><td>React</td><td>19.x；React Compiler 1.0 已稳定</td><td>手写 <code>useMemo</code>/<code>useCallback</code> 的需求大幅减少</td></tr>
+    <tr><td>Next.js</td><td>16.x</td><td>App Router 是默认；Turbopack 是默认打包器</td></tr>
+    <tr><td>TanStack Start</td><td>v1</td><td>基于 Vite 的全栈框架，类型安全路由是招牌</td></tr>
+    <tr><td>Vite</td><td>8（内置 Rolldown）</td><td>生产构建显著变快</td></tr>
+    <tr><td>Tailwind CSS</td><td>v4</td><td>配置写在 CSS 里而不是 <code>tailwind.config.js</code>；Agent 常写成 v3 风格</td></tr>
+    <tr><td>Zod</td><td>v4</td><td>运行时校验的事实标准</td></tr>
+    <tr><td>AI SDK（Vercel）</td><td>v6</td><td>提供 Agent 抽象（<code>ToolLoopAgent</code>）、工具审批等</td></tr>
+  </tbody>
+</table>
+
+<div class="callout agent">
+  <span class="callout-title">对 Agent 怎么说</span>
+  <div class="compare">
+    <div class="head bad">模糊</div><div class="head good">精确</div>
+    <div class="bad">“帮我建一个全栈网站。”</div>
+    <div class="good">“用 pnpm 创建一个 TanStack Start 项目：TypeScript strict 模式，Tailwind v4，部署目标 Cloudflare Workers。先只做一个首页和一个 /api/health 路由，不加数据库和鉴权。完成后运行 <code>pnpm tsc --noEmit</code> 和 <code>pnpm build</code>，把输出贴给我。”</div>
+    <div class="row-sep"></div>
+    <div class="bad">“加个库处理日期。”</div>
+    <div class="good">“需要格式化相对时间（如‘3 天前’）。优先用平台自带的 <code>Intl.RelativeTimeFormat</code>；如果必须加依赖，先列出候选、体积和维护状态，等我确认。”</div>
+  </div>
+  <p>精确版本做了三件事：<strong>指定了每一层的选择</strong>（包管理、框架、样式、平台），<strong>限定了范围</strong>（先不加什么），<strong>给出了可检查的完成标准</strong>。</p>
+</div>
+
+<div class="callout interview">
+  <span class="callout-title">面试角</span>
+  <p><strong>问：TypeScript 和 JavaScript 是什么关系？TS 代码是怎么运行的？</strong></p>
+  <p>答题要点：TS 是 JS 的超集，只增加了静态类型系统；类型在编译期检查、运行时被完全擦除。运行前要把 TS 转成 JS——可以由 <code>tsc</code> 完成，但实践中通常由 esbuild / SWC / Vite 或 Node 内置的类型剥离完成，而 <code>tsc</code> 只负责类型检查（<code>--noEmit</code>）。所以类型不能替代运行时校验，外部输入仍需用 Zod 之类的库校验。</p>
+</div>
+
+<h2 id="check">自检</h2>
+
+<details class="check">
+  <summary>1. 同事用 <code>node app.ts</code> 运行成功了，于是说“类型没问题”。他对吗？</summary>
+  <div class="answer"><p>不对。Node 的类型剥离只删除类型标注，不检查类型。代码能运行只说明转译后的 JS 语法合法。要确认类型正确，必须跑 <code>tsc --noEmit</code>（或编辑器里的 TS 语言服务）。</p></div>
+</details>
+
+<details class="check">
+  <summary>2. 一段服务器代码用了 <code>fs.readFileSync</code> 读取本地模板文件，现在要把它部署到 Cloudflare Workers。你预计会遇到什么问题？</summary>
+  <div class="answer"><p>Workers 运行在 V8 isolate 里，没有传统意义上可写、可任意读取的本地文件系统。虽然有 Node 兼容层，但“读部署机器上的任意文件”这种假设不成立。通常做法是：在构建时把模板打包进代码、放进静态资源，或存到 R2/KV 中读取。这说明“运行时的形状”会影响代码写法。</p></div>
+</details>
+
+<details class="check">
+  <summary>3. 为什么 Go 后端不需要“打包器”这个概念，前端却离不开？</summary>
+  <div class="answer"><p>因为前端代码要通过网络下载到每个用户的浏览器里执行。文件数量、体积、缓存策略直接决定加载速度。打包器负责合并、摇树、分割、压缩和给文件加哈希。Go 二进制从本地磁盘加载，没有这个问题。</p></div>
+</details>
+
+</article></main>
+</body>
+</html>

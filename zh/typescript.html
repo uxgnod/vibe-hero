@@ -1,0 +1,366 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TypeScript 类型系统 · Vibe Hero</title>
+<meta name="description" content="结构化类型、联合与收窄、判别联合、泛型、工具类型、类型擦除与边界校验（Zod）。">
+<!-- seo -->
+<link rel="canonical" href="https://uxgnod.github.io/vibe-hero/zh/typescript.html">
+<link rel="alternate" hreflang="zh-CN" href="https://uxgnod.github.io/vibe-hero/zh/typescript.html">
+<link rel="alternate" hreflang="en" href="https://uxgnod.github.io/vibe-hero/en/typescript.html">
+<link rel="alternate" hreflang="x-default" href="https://uxgnod.github.io/vibe-hero/en/typescript.html">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Vibe Hero">
+<meta property="og:title" content="TypeScript 类型系统 · Vibe Hero">
+<meta property="og:description" content="结构化类型、联合与收窄、判别联合、泛型、工具类型、类型擦除与边界校验（Zod）。">
+<meta property="og:url" content="https://uxgnod.github.io/vibe-hero/zh/typescript.html">
+<meta property="og:image" content="https://uxgnod.github.io/vibe-hero/assets/og-image.png">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:locale:alternate" content="en_US">
+<meta name="twitter:card" content="summary_large_image">
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "TechArticle", "headline": "TypeScript 类型系统", "description": "结构化类型、联合与收窄、判别联合、泛型、工具类型、类型擦除与边界校验（Zod）。", "inLanguage": "zh-CN", "url": "https://uxgnod.github.io/vibe-hero/zh/typescript.html", "image": "https://uxgnod.github.io/vibe-hero/assets/og-image.png", "dateModified": "2026-09-26", "author": {"@type": "Person", "name": "uxgnod", "url": "https://github.com/uxgnod"}, "isPartOf": {"@type": "WebSite", "name": "Vibe Hero", "url": "https://uxgnod.github.io/vibe-hero/"}}</script>
+<link rel="icon" href="../assets/favicon.svg">
+<link rel="stylesheet" href="../assets/style.css">
+<script>try{var t=localStorage.getItem('vh-theme');if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+<script defer src="../assets/app.js"></script>
+<script defer src="../assets/widgets.js"></script>
+</head>
+<body>
+<main class="content"><article class="doc">
+
+<p class="eyebrow">CHAPTER 04 · 语言</p>
+<h1>TypeScript 类型系统</h1>
+<p class="lead">如果你来自 Java 或 C#，TS 的类型看起来很眼熟，但底层哲学不同：它描述的是<strong>数据的形状</strong>，而不是类的血统；它只在<strong>编写时</strong>存在，运行时一点痕迹都没有。理解这两点，就知道类型能保护你什么、不能保护你什么。</p>
+<div class="meta"><span>⏱ 约 60 分钟</span><span class="badge deep">原理</span><span>工具类型为 <span class="badge use">会用</span></span></div>
+
+<div class="goals">
+  <div class="goals-title">读完本章，你应该能够：</div>
+  <ul>
+    <li>解释结构化类型（structural typing）与 Java 名义类型的区别，并预测赋值是否合法。</li>
+    <li>用判别联合（discriminated union）为有多种状态的数据建模，并写出穷尽检查。</li>
+    <li>说明为什么 API 响应、表单、LLM 输出必须在运行时校验，并用 Zod 做到“一次定义，类型与校验同源”。</li>
+    <li>在代码审查中认出危险的“逃生舱”：<code>any</code>、<code>as</code>、<code>!</code>、<code>@ts-ignore</code>。</li>
+  </ul>
+</div>
+
+<h2 id="question">开场：类型全绿，线上还是崩了</h2>
+
+<div class="callout question">
+  <span class="callout-title">开场问题</span>
+  <p>LinkNote 的代码 <code>tsc</code> 零错误。某天线上报错：<code>TypeError: Cannot read properties of undefined (reading 'length')</code>，位置在 <code>link.tags.length</code>。<code>Link</code> 类型里明明写着 <code>tags: string[]</code>，不可能是 undefined。<strong>类型系统为什么没拦住？</strong></p>
+</div>
+
+<p><strong>答案方向：</strong>那条数据来自一个外部接口，代码里写的是 <code>const link = await res.json() as Link</code>。<code>as</code> 的意思是“编译器，相信我”——编译器相信了，但运行时的数据并没有 <code>tags</code> 字段。<strong>TS 的类型是你对数据形状的“声明”，编译器只检查你的代码与声明是否一致，从不检查真实数据是否符合声明。</strong>所以，凡是从程序外部进来的数据，都必须在运行时校验一次。</p>
+
+<h2 id="structural">结构化类型：看形状，不看出身</h2>
+
+<p>在 Java 里，类型兼容取决于声明关系：<code>class Dog implements Animal</code>，Dog 才能当 Animal 用。这叫<strong>名义类型（nominal typing）</strong>。TypeScript 用的是<strong>结构化类型（structural typing）</strong>：只要形状对得上，就兼容，不需要任何声明。</p>
+
+<script type="text/plain" class="code" data-lang="ts">
+type HasUrl = { url: string };
+
+function open(x: HasUrl) { /* ... */ }
+
+const link = { url: "https://a.dev", title: "A", tags: ["x"] };
+open(link);          // ✓ 合法：link 至少有 url: string，多出的字段不影响
+
+class Bookmark { constructor(public url: string) {} }
+open(new Bookmark("https://b.dev"));   // ✓ 也合法：Bookmark 从未声明实现 HasUrl
+</script>
+
+<p>这很像 Go 的接口（隐式实现），只是范围扩大到了所有类型，包括普通对象。</p>
+
+<div class="callout warn">
+  <span class="callout-title">结构化类型的一个副作用</span>
+  <p>两个形状相同的类型可以互相赋值，哪怕语义完全不同：<code>type UserId = string</code> 和 <code>type LinkId = string</code> 对编译器来说是同一个东西，把用户 ID 传给需要链接 ID 的函数不会报错。需要区分时，可以用“品牌类型（branded type）”技巧：<code>type LinkId = string &amp; { __brand: "LinkId" }</code>。<span class="badge aware">知道</span></p>
+</div>
+
+<h2 id="basics">基础积木</h2>
+
+<table>
+  <thead><tr><th>写法</th><th>含义</th></tr></thead>
+  <tbody>
+    <tr><td><code>string</code>、<code>number</code>、<code>boolean</code></td><td>原始类型（JS 只有一种数字类型：64 位浮点）</td></tr>
+    <tr><td><code>string[]</code> 或 <code>Array&lt;string&gt;</code></td><td>数组</td></tr>
+    <tr><td><code>[string, number]</code></td><td>元组：固定长度、每位类型固定</td></tr>
+    <tr><td><code>{ url: string; title?: string }</code></td><td>对象类型；<code>?</code> 表示可选（值可能是 undefined）</td></tr>
+    <tr><td><code>readonly string[]</code></td><td>只读（仅编译期约束）</td></tr>
+    <tr><td><code>"pending" | "done"</code></td><td>字面量类型的联合：只能是这两个字符串之一</td></tr>
+    <tr><td><code>string | null</code></td><td>联合类型：可能是 string，也可能是 null</td></tr>
+    <tr><td><code>A &amp; B</code></td><td>交叉类型：同时具有 A 和 B 的所有字段</td></tr>
+    <tr><td><code>unknown</code></td><td>“不知道是什么”，使用前必须先收窄 —— 安全</td></tr>
+    <tr><td><code>any</code></td><td>“关闭类型检查” —— 危险，会像病毒一样传播</td></tr>
+    <tr><td><code>never</code></td><td>不可能存在的值（用于穷尽检查）</td></tr>
+  </tbody>
+</table>
+
+<p><strong><code>type</code> 还是 <code>interface</code>？</strong>两者在描述对象形状时几乎可以互换。<code>interface</code> 可以被重复声明并自动合并、报错信息有时更友好；<code>type</code> 能表达联合、元组等任意类型。实践中：<strong>团队统一一种即可</strong>，很多项目默认用 <code>type</code>，需要被扩展的公共对象形状用 <code>interface</code>。这是风格问题，不是正确性问题。</p>
+
+<h2 id="narrowing">联合类型与收窄 <span class="badge deep">原理</span></h2>
+
+<p>联合类型是 TS 最有表达力的特性，也是它与 Java 类型系统差异最大的地方。一个值的类型是 <code>string | null</code> 时，你不能直接调用 <code>.length</code>——必须先证明它不是 null。证明的过程叫<strong>收窄（narrowing）</strong>：编译器会跟踪你的 <code>if</code>、<code>return</code>、<code>typeof</code>、<code>in</code> 等判断，在不同代码位置赋予同一个变量不同的类型。</p>
+
+<script type="text/plain" class="code" data-lang="ts">
+function len(x: string | null) {
+  if (x === null) return 0;   // 这一行之后，x 的类型是 string
+  return x.length;
+}
+function show(v: string | number) {
+  if (typeof v === "number") return v.toFixed(2);  // 这里 v: number
+  return v.toUpperCase();                           // 这里 v: string
+}
+</script>
+
+<h3>判别联合：为“多状态数据”建模</h3>
+
+<p>LinkNote 的每个收藏都有状态：处理中、已完成、失败。不同状态下拥有的字段不同：完成才有摘要，失败才有错误信息。Java 程序员的第一直觉通常是写一个大类，把所有字段都设为可空：</p>
+
+<script type="text/plain" class="code" data-lang="ts">
+// ✗ “可空字段大杂烩”：允许了无意义的组合
+type BookmarkBad = {
+  status: string;
+  url: string;
+  summary?: string;   // done 时才有……吗？编译器不知道
+  error?: string;     // 可能同时有 summary 和 error？编译器也允许
+};
+</script>
+
+<p>判别联合的做法是：<strong>每种状态一个形状，用一个共同的字面量字段（判别字段）区分</strong>。这样“非法状态”根本无法被表示出来：</p>
+
+<div data-widget="narrowing"></div>
+
+<p>这种写法在 TS 代码中无处不在：请求状态（loading / success / error）、LLM 流式消息的片段类型（text / tool-call / tool-result）、Redux 的 action、事件类型……看到 <code>type: "..."</code> 或 <code>kind: "..."</code> 字段，就应该想到它。</p>
+
+<h3>穷尽检查：让编译器提醒你漏了哪个分支</h3>
+
+<script type="text/plain" class="code" data-lang="ts">
+function icon(b: Bookmark): string {
+  switch (b.status) {
+    case "pending": return "⏳";
+    case "done":    return "✓";
+    case "failed":  return "✗";
+    default: {
+      const _exhaustive: never = b;   // 如果漏了某种状态，这里会报类型错误
+      return _exhaustive;
+    }
+  }
+}
+</script>
+
+<p>以后有人给 <code>Bookmark</code> 加了第四种状态 <code>archived</code>，所有漏掉它的 <code>switch</code> 都会在编译期报错。这就是类型系统最有价值的地方：<strong>把“改了一处、忘了另一处”的 bug 变成编译错误</strong>。在 Agent 大规模修改代码的时代，这种保护尤其重要。</p>
+
+<h2 id="inference">类型推断：少写类型，写在关键处</h2>
+
+<p>TS 的类型推断很强。大部分局部变量不需要标注类型，编译器能推出来。一个实用的原则：</p>
+<ul>
+  <li><strong>必须标注：</strong>函数参数；模块导出的公共函数的返回类型（作为契约）；外部数据的入口。</li>
+  <li><strong>让它推断：</strong>局部变量、回调参数、简单函数的返回值。</li>
+</ul>
+
+<p>两个常用的“辅助推断”关键字：</p>
+
+<script type="text/plain" class="code" data-lang="ts">
+// as const：把值推断为最窄的字面量类型，并且只读
+const STATUSES = ["pending", "done", "failed"] as const;
+type Status = (typeof STATUSES)[number];   // "pending" | "done" | "failed"
+
+// satisfies：检查值符合某个类型，但保留更精确的推断结果
+const routes = {
+  home: "/",
+  link: "/links/:id",
+} satisfies Record<string, string>;
+routes.link;   // 类型是精确的 "/links/:id"，而且拼错键名会报错
+</script>
+
+<p><code>typeof STATUSES</code> 这一行展示了一个重要习惯：<strong>从一个“单一事实来源”推导出类型</strong>，而不是在两处分别手写，避免它们不同步。</p>
+
+<h2 id="generics">泛型</h2>
+
+<p>泛型（generics）让函数或类型对“某个待定的类型”保持通用，同时保留类型信息。和 Java 泛型概念一致，但 TS 的泛型更常用于推导：</p>
+
+<script type="text/plain" class="code" data-lang="ts">
+function first<T>(arr: readonly T[]): T | undefined {
+  return arr[0];
+}
+const a = first([1, 2, 3]);        // a: number | undefined（T 被推断为 number）
+const b = first(["x", "y"]);       // b: string | undefined
+
+// 约束：T 必须至少有 id 字段
+function byId<T extends { id: string }>(items: T[], id: string): T | undefined {
+  return items.find((it) => it.id === id);
+}
+</script>
+
+<div class="callout warn">
+  <span class="callout-title">一个很常见的“泛型谎言”</span>
+<script type="text/plain" class="code" data-lang="ts">
+async function getJson<T>(url: string): Promise<T> {
+  const res = await fetch(url);
+  return res.json();          // res.json() 的类型是 any，被悄悄当作 T 返回
+}
+const link = await getJson<Link>("/api/links/1");   // 看起来类型安全，其实没有任何校验
+</script>
+  <p>这和开场问题中的 <code>as Link</code> 本质相同：类型参数只是你的“声明”。Agent 非常喜欢写这种函数。正确的做法是把一个<em>校验器</em>传进去（见下一节）。</p>
+</div>
+
+<h2 id="utility">工具类型：从已有类型推导新类型 <span class="badge use">会用</span></h2>
+
+<table>
+  <thead><tr><th>工具类型</th><th>作用</th><th>LinkNote 例子</th></tr></thead>
+  <tbody>
+    <tr><td><code>Partial&lt;T&gt;</code></td><td>所有字段变可选</td><td>更新接口的请求体</td></tr>
+    <tr><td><code>Pick&lt;T, K&gt;</code> / <code>Omit&lt;T, K&gt;</code></td><td>挑选 / 去掉某些字段</td><td><code>Omit&lt;Link, "id" | "createdAt"&gt;</code> 作为创建参数</td></tr>
+    <tr><td><code>Record&lt;K, V&gt;</code></td><td>键为 K、值为 V 的对象</td><td><code>Record&lt;Status, string&gt;</code> 状态到文案的映射</td></tr>
+    <tr><td><code>ReturnType&lt;F&gt;</code> / <code>Awaited&lt;P&gt;</code></td><td>取函数返回类型 / 解开 Promise</td><td>从查询函数推出数据类型</td></tr>
+    <tr><td><code>keyof T</code> / <code>T[K]</code></td><td>取键的联合 / 取某字段的类型</td><td><code>Link["tags"]</code></td></tr>
+  </tbody>
+</table>
+
+<p>你会在库的类型声明里看到更复杂的“类型体操”（条件类型、映射类型、模板字面量类型）。<span class="badge aware">知道</span> 它们存在即可：读懂报错比会写更重要，写复杂类型的事可以交给 Agent，但要求它附上类型测试或使用示例。</p>
+
+<h2 id="erasure">类型擦除与边界校验 <span class="badge deep">原理</span></h2>
+
+<p>回到开场的问题。因为类型在运行时不存在，程序里的数据可以分成两类：</p>
+
+<figure class="diagram">
+<div class="diagram-scroll">
+<svg viewBox="0 0 780 290" role="img" aria-label="信任边界：外部数据经 Zod 校验后进入有类型的内部">
+  <defs><marker id="t1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="ar-deep"/></marker>
+  <marker id="t2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="ar-ok"/></marker></defs>
+  <text x="120" y="24" text-anchor="middle" font-weight="700" font-size="14" class="t-deep">外部世界（类型不可信）</text>
+  <g font-size="12.5">
+    <rect x="20" y="40" width="200" height="30" rx="6" class="box-bad"/><text x="120" y="60" text-anchor="middle">HTTP 请求体 / URL 参数</text>
+    <rect x="20" y="78" width="200" height="30" rx="6" class="box-bad"/><text x="120" y="98" text-anchor="middle">第三方 API 响应</text>
+    <rect x="20" y="116" width="200" height="30" rx="6" class="box-bad"/><text x="120" y="136" text-anchor="middle">LLM 输出（结构化 JSON）</text>
+    <rect x="20" y="154" width="200" height="30" rx="6" class="box-bad"/><text x="120" y="174" text-anchor="middle">表单 / localStorage</text>
+    <rect x="20" y="192" width="200" height="30" rx="6" class="box-bad"/><text x="120" y="212" text-anchor="middle">环境变量 / 数据库 JSON 列</text>
+  </g>
+  <rect x="300" y="60" width="150" height="150" rx="12" class="box-use"/>
+  <text x="375" y="110" text-anchor="middle" font-weight="700" font-size="15">schema.parse()</text>
+  <text x="375" y="132" text-anchor="middle" font-size="12" class="t-soft">运行时校验</text>
+  <text x="375" y="152" text-anchor="middle" font-size="12" class="t-soft">失败 → 明确报错</text>
+  <text x="375" y="172" text-anchor="middle" font-size="12" class="t-soft">成功 → 得到类型</text>
+  <line x1="224" y1="130" x2="296" y2="130" class="ln-deep" marker-end="url(#t1)"/>
+  <line x1="454" y1="130" x2="526" y2="130" class="ln-ok" marker-end="url(#t2)"/>
+  <rect x="530" y="40" width="230" height="180" rx="12" class="box-ok"/>
+  <text x="645" y="70" text-anchor="middle" font-weight="700" font-size="14" class="t-ok">程序内部（类型可信）</text>
+  <text x="645" y="100" text-anchor="middle" font-size="12.5">业务逻辑、组件、工具函数</text>
+  <text x="645" y="124" text-anchor="middle" font-size="12.5">只处理已校验的数据</text>
+  <text x="645" y="148" text-anchor="middle" font-size="12.5">可以放心依赖 tsc</text>
+  <text x="645" y="190" text-anchor="middle" font-size="11.5" class="t-mute">内部不再需要到处写防御性判断</text>
+  <text x="390" y="262" text-anchor="middle" font-size="12.5" class="t-soft">原则：在边界上校验一次，在内部信任类型。不要反过来——内部到处防御、边界却直接 as。</text>
+</svg>
+</div>
+<figcaption>信任边界（trust boundary）。“外部”指一切不由当前 TypeScript 编译过程产生的数据。</figcaption>
+</figure>
+
+<h3>Zod：一次定义，同时得到校验器和类型</h3>
+
+<p>Zod 是 TS 生态中运行时校验的事实标准（类似库还有 Valibot、ArkType，它们大多实现了统一的 Standard Schema 接口，框架可以通用地接受）。它的核心价值：<strong>你只写一份 schema，TypeScript 类型从 schema 推导出来</strong>，两者永远不会不一致。</p>
+
+<script type="text/plain" class="code" data-lang="ts" data-title="src/lib/schema.ts">
+import { z } from "zod";
+
+export const BookmarkSchema = z.discriminatedUnion("status", [
+  z.object({ status: z.literal("pending"), url: z.url() }),
+  z.object({ status: z.literal("done"), url: z.url(), summary: z.string(), tags: z.array(z.string()) }),
+  z.object({ status: z.literal("failed"), url: z.url(), error: z.string() }),
+]);
+
+// 类型从 schema 推导：不再手写第二份
+export type Bookmark = z.infer<typeof BookmarkSchema>;
+
+// 在边界上使用
+const res = await fetch("/api/links/1");
+const parsed = BookmarkSchema.safeParse(await res.json());
+if (!parsed.success) {
+  console.error(parsed.error.issues);     // 精确说明哪个字段不符合
+} else {
+  const bookmark = parsed.data;           // 类型是 Bookmark，且真的经过了检查
+}
+</script>
+
+<p>之后你会在很多地方看到同一个 Zod schema 被重复利用：表单校验、API 入参校验、环境变量校验、数据库查询结果校验，以及——非常重要的——<strong>约束 LLM 的结构化输出</strong>（第 11 章）。</p>
+
+<h2 id="escape-hatches">逃生舱：什么时候可以用，什么时候是危险信号</h2>
+
+<table>
+  <thead><tr><th>写法</th><th>含义</th><th>审查建议</th></tr></thead>
+  <tbody>
+    <tr><td><code>any</code></td><td>关闭该值的全部检查，并传染给所有用到它的地方</td><td>🚩 几乎总是应该改成 <code>unknown</code> + 收窄或校验</td></tr>
+    <tr><td><code>x as T</code></td><td>类型断言：“相信我，它是 T”</td><td>🚩 对外部数据使用时尤其危险；对 DOM 元素等少数场景可接受</td></tr>
+    <tr><td><code>x!</code></td><td>非空断言：“相信我，它不是 null”</td><td>⚠️ 要求说明为什么一定不为空；通常可以改成显式判断</td></tr>
+    <tr><td><code>// @ts-ignore</code></td><td>忽略下一行的任何错误</td><td>🚩 不允许；确有必要时用 <code>@ts-expect-error</code> 加注释说明原因</td></tr>
+    <tr><td><code>as unknown as T</code></td><td>双重断言，强行转换任意类型</td><td>🚩 基本等于承认建模有问题</td></tr>
+  </tbody>
+</table>
+
+<div class="callout tip">
+  <span class="callout-title">把审查规则交给机器</span>
+  <p>这些规则可以用 Lint 自动执行（如 typescript-eslint 的 <code>no-explicit-any</code>、<code>no-non-null-assertion</code>，Biome 有对应规则），再写进 AGENTS.md。人和 Agent 都会“为了让报错消失”而走捷径，机器检查不会心软。</p>
+</div>
+
+<h2 id="enums">关于 enum</h2>
+
+<p>从 Java/C# 来的人会自然地想用 <code>enum</code>。在现代 TS 里，更推荐<strong>字符串字面量联合</strong>或 <code>as const</code> 对象：它们是纯类型，能被直接擦除（Node 的类型剥离不支持 <code>enum</code>，因为 enum 会生成运行时代码），而且和 JSON、数据库里的字符串值天然对应。</p>
+
+<script type="text/plain" class="code" data-lang="ts">
+// 推荐
+type Status = "pending" | "done" | "failed";
+// 需要运行时遍历时
+const Status = { Pending: "pending", Done: "done", Failed: "failed" } as const;
+type StatusValue = (typeof Status)[keyof typeof Status];
+</script>
+
+<h2 id="errors">读懂类型报错</h2>
+
+<p>TS 的报错有时长达几十行。三个技巧：</p>
+<ol class="steps">
+  <li><strong>从最后一行往上读。</strong>最底部通常是最具体的不匹配原因（“属性 X 在类型 Y 中缺失”）。</li>
+  <li><strong>悬停看两边的类型。</strong>分别看“期望的类型”和“实际的类型”，差异就是答案。</li>
+  <li><strong>让 Agent 解释，而不是让 Agent 修。</strong>先问“这个报错说明我的数据模型哪里不一致？”，理解后再决定改类型还是改代码。直接说“修掉这个报错”，常常会得到一个 <code>as</code>。</li>
+</ol>
+
+<div class="callout agent">
+  <span class="callout-title">对 Agent 怎么说</span>
+  <div class="compare">
+    <div class="head bad">模糊</div><div class="head good">精确</div>
+    <div class="bad">“给收藏加个状态字段。”</div>
+    <div class="good">“把 Bookmark 建模为以 <code>status</code> 为判别字段的判别联合：pending（url）、done（url、summary、tags）、failed（url、error）。用 Zod 定义 schema 并用 <code>z.infer</code> 导出类型。所有 switch 加穷尽检查。不要用可选字段表示状态相关的数据。”</div>
+    <div class="row-sep"></div>
+    <div class="bad">“修复这些类型错误。”</div>
+    <div class="good">“修复类型错误，约束：不得使用 any、as、非空断言和 @ts-ignore；如果错误说明数据模型本身有问题，先停下来向我解释，再提出修改方案。”</div>
+  </div>
+</div>
+
+<div class="callout interview">
+  <span class="callout-title">面试角</span>
+  <ul>
+    <li><strong>any 和 unknown 的区别？</strong>都能接收任意值。any 关闭检查、可以随意使用；unknown 必须先收窄才能使用。外部数据应该是 unknown。</li>
+    <li><strong>什么是结构化类型？与 Java 有何不同？</strong>兼容性由形状决定而不是声明关系；举一个类未声明实现接口但可以赋值的例子。</li>
+    <li><strong>为什么 TS 项目还需要 Zod？</strong>类型擦除：运行时没有类型信息，外部数据必须在边界校验。Zod 让 schema 成为唯一事实来源，类型由它推导。</li>
+    <li><strong>什么是判别联合？解决什么问题？</strong>用共同的字面量字段区分多种形状，让非法状态不可表示，并借助控制流分析自动收窄。</li>
+  </ul>
+</div>
+
+<h2 id="check">自检</h2>
+
+<details class="check">
+  <summary>1. <code>type A = { id: string }</code>，<code>const x = { id: "1", extra: true }</code>。<code>const a: A = x</code> 合法吗？<code>const b: A = { id: "1", extra: true }</code> 呢？</summary>
+  <div class="answer"><p>第一个合法：结构化类型只要求“至少有” id。第二个会报错：直接把对象字面量赋给有类型的变量时，TS 会额外做“多余属性检查（excess property check）”，因为这通常意味着拼写错误。这个特殊检查只对“新鲜的”对象字面量生效。</p></div>
+</details>
+
+<details class="check">
+  <summary>2. LLM 返回了一段 JSON，你用 <code>JSON.parse(text) as Summary</code> 得到数据。列出至少两种可能在运行时出现、但类型系统无法发现的问题。</summary>
+  <div class="answer"><p>字段缺失（模型漏写了 tags）；字段类型不对（tags 是一个逗号分隔的字符串而不是数组）；多出不认识的字段；枚举值超出范围（status 写成了 "completed"）。应使用 <code>SummarySchema.safeParse</code>，失败时重试或降级处理。</p></div>
+</details>
+
+<details class="check">
+  <summary>3. 给 Bookmark 新增 <code>{ status: "archived"; url: string }</code>。在有穷尽检查和没有穷尽检查的两个代码库里，分别会发生什么？</summary>
+  <div class="answer"><p>有穷尽检查：所有漏处理 archived 的 switch 在编译期报错，列出需要修改的位置。没有：代码照常编译，archived 的收藏会落入 default 分支或者被当成某种错误状态处理，bug 直到用户遇到时才暴露。</p></div>
+</details>
+
+</article></main>
+</body>
+</html>

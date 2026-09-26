@@ -1,0 +1,354 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rendering & Meta-Frameworks · Vibe Hero</title>
+<meta name="description" content="CSR, SSR, SSG, streaming, hydration, React Server Components, and the structure and trade-offs of Next.js and TanStack Start.">
+<!-- seo -->
+<link rel="canonical" href="https://uxgnod.github.io/vibe-hero/en/rendering.html">
+<link rel="alternate" hreflang="zh-CN" href="https://uxgnod.github.io/vibe-hero/zh/rendering.html">
+<link rel="alternate" hreflang="en" href="https://uxgnod.github.io/vibe-hero/en/rendering.html">
+<link rel="alternate" hreflang="x-default" href="https://uxgnod.github.io/vibe-hero/en/rendering.html">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Vibe Hero">
+<meta property="og:title" content="Rendering &amp; Meta-Frameworks · Vibe Hero">
+<meta property="og:description" content="CSR, SSR, SSG, streaming, hydration, React Server Components, and the structure and trade-offs of Next.js and TanStack Start.">
+<meta property="og:url" content="https://uxgnod.github.io/vibe-hero/en/rendering.html">
+<meta property="og:image" content="https://uxgnod.github.io/vibe-hero/assets/og-image.png">
+<meta property="og:locale" content="en_US">
+<meta property="og:locale:alternate" content="zh_CN">
+<meta name="twitter:card" content="summary_large_image">
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "TechArticle", "headline": "Rendering & Meta-Frameworks", "description": "CSR, SSR, SSG, streaming, hydration, React Server Components, and the structure and trade-offs of Next.js and TanStack Start.", "inLanguage": "en", "url": "https://uxgnod.github.io/vibe-hero/en/rendering.html", "image": "https://uxgnod.github.io/vibe-hero/assets/og-image.png", "dateModified": "2026-09-26", "author": {"@type": "Person", "name": "uxgnod", "url": "https://github.com/uxgnod"}, "isPartOf": {"@type": "WebSite", "name": "Vibe Hero", "url": "https://uxgnod.github.io/vibe-hero/"}}</script>
+<link rel="icon" href="../assets/favicon.svg">
+<link rel="stylesheet" href="../assets/style.css">
+<script>try{var t=localStorage.getItem('vh-theme');if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+<script defer src="../assets/app.js"></script>
+<script defer src="../assets/widgets.js"></script>
+</head>
+<body>
+<main class="content"><article class="doc">
+
+<p class="eyebrow">CHAPTER 07 · FRONTEND</p>
+<h1>Rendering & Meta-Frameworks</h1>
+<p class="lead">In Chapter 06 React ran only in the browser. In real full-stack apps, the same React components also run on the server — even at build time. This chapter answers three questions: <strong>where does rendering happen, when does it happen, and how much JS is shipped to the browser?</strong> The answers decide first-screen speed, SEO, and whether your secrets stay safe.</p>
+<div class="meta"><span>⏱ ~70 min</span><span class="badge deep">Deep</span> (rendering modes, hydration, server/client boundary) <span class="badge use">Use</span> (Next.js, TanStack Start)</div>
+
+<div class="goals">
+  <div class="goals-title">By the end of this chapter you should be able to:</div>
+  <ul>
+    <li>Compare CSR, SSR, SSG and streaming on a timeline, and pick a mode for each LinkNote page.</li>
+    <li>Explain hydration and what causes "hydration mismatch" errors.</li>
+    <li>Distinguish server and client components; know what <code>'use client'</code> and <code>'use server'</code> each mark, and which one is security-sensitive.</li>
+    <li>Read the project structure of Next.js App Router and TanStack Start, and state their main trade-offs.</li>
+  </ul>
+</div>
+
+<h2 id="question">Opening: what is <code>'use client'</code>, really?</h2>
+
+<div class="callout question">
+  <span class="callout-title">Opening question</span>
+  <p>In a Next.js project, an agent wrote a component that calls <code>await db.query(...)</code> directly — no API layer. Later you want to add a clickable button; the agent adds <code>'use client'</code> at the top of the file, and you get an error: <em>async/await is not yet supported in Client Components</em>, plus a warning that the database module can't be used in the browser. <strong>How can a component read the database directly? And why does one string at the top change the nature of the whole component?</strong></p>
+</div>
+
+<p><strong>Where the answer lies:</strong> in Next.js's App Router, components are <strong>Server Components</strong> by default: they execute only on the server, so they can access the database directly, and their code is never sent to the browser. <code>'use client'</code> is a <strong>boundary declaration</strong>: from this file on, the component and everything it imports are bundled, shipped to the browser, and run there — and of course the browser can't connect to your database. The fix isn't to turn the whole component into a client component, but to split "the interactive button" into a small client component that the server component renders.</p>
+
+<h2 id="three-questions">Three questions define a rendering mode</h2>
+
+<table>
+  <thead><tr><th>Mode</th><th>Where HTML is produced</th><th>When</th><th>Typical use</th></tr></thead>
+  <tbody>
+    <tr><td><strong>CSR</strong> client-side rendering</td><td>Browser</td><td>After the user opens the page</td><td>Logged-in dashboards, highly interactive tools</td></tr>
+    <tr><td><strong>SSR</strong> server-side rendering</td><td>Server</td><td>On every request</td><td>Personalized pages with live data</td></tr>
+    <tr><td><strong>SSG</strong> static generation</td><td>Build machine</td><td>At build (deploy) time</td><td>Docs, blogs, marketing pages (like this guide)</td></tr>
+    <tr><td><strong>ISR / cached rendering</strong></td><td>Server</td><td>On first request, then cached for a while</td><td>Pages whose data changes occasionally</td></tr>
+    <tr><td><strong>Streaming SSR</strong></td><td>Server</td><td>On every request, sent in chunks</td><td>Pages where some data is slow</td></tr>
+  </tbody>
+</table>
+
+<p>The timeline below compares when users see content and when they can interact. Click "Play":</p>
+
+<div data-widget="rendering-modes"></div>
+
+<p>Line the timeline up with Chapter 05's page-load journey: <strong>CSR's step ⑤ delivers an empty shell</strong>, so there's no content until JS downloads, runs and fetches data; <strong>SSR's step ⑤ already contains the full content</strong>, visible at step ⑧, but not interactive until JS loads and "hydrates"; <strong>streaming</strong> sends the page shell first while slow parts keep computing on the server and are sent later over the same response.</p>
+
+<h2 id="hydration">Hydration: bringing server HTML to life <span class="badge deep">Deep</span></h2>
+
+<p>Server-generated HTML is static markup; no event handlers are attached to its buttons. After JS loads, React <strong>renders the components again on the client with the same data</strong>, matches the result to the existing DOM, and attaches event handlers. This is <strong>hydration</strong>.</p>
+
+<p>Hydration requires that <strong>the client's first render exactly matches the server's HTML</strong>. Otherwise React reports a "hydration mismatch". Common causes:</p>
+
+<script type="text/plain" class="code" data-lang="tsx">
+// ✗ Server and browser compute different results
+<p>It is {new Date().toLocaleTimeString()}</p>          // different times, maybe different time zones
+<p>{Math.random() > 0.5 ? "A" : "B"}</p>               // different random numbers
+<p>{typeof window !== "undefined" ? "browser" : "server"}</p>  // deliberately branching on environment
+<p>{localStorage.getItem("theme")}</p>                 // no localStorage on the server: crashes outright
+</script>
+
+<p>Fixes: read browser-only values in an effect after mount; let the server decide time-based values and pass them down as props; if truly necessary, mark a component as client-only. When you hit a hydration error, the first question is always: <strong>"Would this code produce different results on the server and in the browser?"</strong></p>
+
+<h2 id="rsc">React Server Components <span class="badge deep">Deep</span></h2>
+
+<p>SSR solved "see the first screen sooner" but not "too much JS": in classic SSR every component's code is still sent to the browser for hydration, even a component that only displays static text.</p>
+
+<p><strong>React Server Components (RSC)</strong> split components into two kinds:</p>
+
+<table>
+  <thead><tr><th></th><th>Server Component (default)</th><th>Client Component (<code>'use client'</code>)</th></tr></thead>
+  <tbody>
+    <tr><td>Where it runs</td><td>Only on the server (or at build time)</td><td>Pre-rendered once on the server + runs in the browser</td></tr>
+    <tr><td>Code shipped to the browser?</td><td><strong>No</strong></td><td>Yes</td></tr>
+    <tr><td>Can be <code>async</code>, read the DB, read secrets</td><td>✓</td><td>✗</td></tr>
+    <tr><td>Can use <code>useState</code>, <code>useEffect</code>, <code>onClick</code></td><td>✗</td><td>✓</td></tr>
+    <tr><td>Good for</td><td>Data fetching, layout, static content, heavy deps (Markdown rendering, syntax highlighting)</td><td>Interactivity: buttons, forms, inputs, animation</td></tr>
+  </tbody>
+</table>
+
+<figure class="diagram">
+<div class="diagram-scroll">
+<svg viewBox="0 0 780 300" role="img" aria-label="Client components embedded in a server component tree">
+  <defs><marker id="rr1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10z" class="ar-fill"/></marker></defs>
+  <rect x="300" y="15" width="180" height="46" rx="8" class="box-purple"/><text x="390" y="36" text-anchor="middle" font-weight="700" font-size="13">Layout</text><text x="390" y="52" text-anchor="middle" font-size="10.5" class="t-soft">server · reads current user</text>
+  <rect x="80" y="105" width="190" height="46" rx="8" class="box-purple"/><text x="175" y="126" text-anchor="middle" font-weight="700" font-size="13">LinkPage</text><text x="175" y="142" text-anchor="middle" font-size="10.5" class="t-soft">server · await db query</text>
+  <rect x="510" y="105" width="190" height="46" rx="8" class="box-use"/><text x="605" y="126" text-anchor="middle" font-weight="700" font-size="13">UserMenu</text><text x="605" y="142" text-anchor="middle" font-size="10.5" class="t-soft">client · dropdown interaction</text>
+  <rect x="20" y="200" width="160" height="46" rx="8" class="box-purple"/><text x="100" y="221" text-anchor="middle" font-weight="700" font-size="13">Summary</text><text x="100" y="237" text-anchor="middle" font-size="10.5" class="t-soft">server · Markdown render</text>
+  <rect x="200" y="200" width="160" height="46" rx="8" class="box-use"/><text x="280" y="221" text-anchor="middle" font-weight="700" font-size="13">DeleteButton</text><text x="280" y="237" text-anchor="middle" font-size="10.5" class="t-soft">client · onClick</text>
+  <line x1="360" y1="62" x2="200" y2="103" class="ln" marker-end="url(#rr1)"/>
+  <line x1="420" y1="62" x2="580" y2="103" class="ln" marker-end="url(#rr1)"/>
+  <line x1="150" y1="152" x2="110" y2="198" class="ln" marker-end="url(#rr1)"/>
+  <line x1="200" y1="152" x2="260" y2="198" class="ln" marker-end="url(#rr1)"/>
+  <text x="280" y="268" text-anchor="middle" font-size="11" class="t-mute">props: { id: "abc" } ← must be serializable</text>
+  <rect x="440" y="190" width="320" height="95" rx="10" class="box-soft"/>
+  <rect x="455" y="205" width="16" height="12" rx="3" class="box-purple"/><text x="480" y="216" font-size="12">Server component: code stays on server, 0 KB JS</text>
+  <rect x="455" y="228" width="16" height="12" rx="3" class="box-use"/><text x="480" y="239" font-size="12">Client component: code is bundled for browser</text>
+  <text x="455" y="264" font-size="11.5" class="t-soft">The browser downloads only the yellow parts.</text>
+  <text x="455" y="280" font-size="11.5" class="t-soft">'use client' is a door; every import past it ships.</text>
+</svg>
+</div>
+<figcaption>A server component tree with a few client components embedded (often called "islands of interactivity"). Props that cross the boundary must be serializable: strings, numbers and plain objects are fine; functions, class instances and DB connections are not.</figcaption>
+</figure>
+
+<h3>RSC and SSR are not the same thing</h3>
+
+<p>This is the most common confusion in interviews and in practice. <strong>SSR</strong> means "render components to HTML on the server"; every component's code is still sent to the browser to hydrate. <strong>RSC</strong> means "some components exist only on the server"; their rendered output reaches the browser in a special serialized format, and their code is never sent. The two are usually combined: the first screen of both server and client components is output as HTML via SSR, but only client components need hydrating.</p>
+
+<h3><code>'use server'</code>: an invisible API endpoint</h3>
+
+<p>When a client component needs to trigger a server-side operation (like deleting a bookmark), it can call a function marked <code>'use server'</code>. It looks like an ordinary function call, but the framework actually <strong>generates an HTTP endpoint</strong> for it, and the browser calls it over the network. This is a Server Function (in Next.js, often called a Server Action when used with forms).</p>
+
+<div class="callout warn">
+  <span class="callout-title">Security essentials</span>
+  <p>A <code>'use server'</code> function is a <strong>public network endpoint</strong>. Anyone can call it directly with any arguments, not necessarily from your UI. Every Server Function must therefore: ① validate its arguments (Zod); ② check the user is logged in; ③ check authorization (does this bookmark belong to the current user?). Agent-generated Server Actions frequently miss ③.</p>
+  <p>Also, for modules that must only run on the server (DB clients, SDKs holding secrets), add <code>import "server-only"</code> at the top; if a client component ever imports them, even indirectly, the build fails.</p>
+</div>
+
+<h2 id="nextjs">Next.js App Router <span class="badge use">Use</span></h2>
+
+<p>Next.js expresses routes through the file system. The folder structure under <code>app/</code> is the URL structure, and certain file names have special meaning:</p>
+
+<script type="text/plain" class="code" data-lang="text" data-title="Next.js project structure (LinkNote)">
+app/
+├── layout.tsx            # root layout shared by all pages (html, body, nav)
+├── page.tsx              # route /
+├── links/
+│   ├── page.tsx          # route /links
+│   ├── loading.tsx       # skeleton while this route loads (auto-wrapped in Suspense)
+│   ├── error.tsx         # UI when this route errors (must be a client component)
+│   └── [id]/
+│       ├── page.tsx      # route /links/:id (dynamic segment)
+│       └── actions.ts    # 'use server' functions
+└── api/
+    └── health/route.ts   # route handler: GET /api/health, returns a Response
+proxy.ts                  # runs before requests reach pages (renamed from middleware.ts in Next 16)
+</script>
+
+<script type="text/plain" class="code" data-lang="tsx" data-title="app/links/[id]/page.tsx (server component)">
+import { notFound } from "next/navigation";
+import { getLinkForCurrentUser } from "@/server/links";
+import { DeleteButton } from "./DeleteButton";
+
+export default async function LinkPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const link = await getLinkForCurrentUser(id);   // query the DB directly on the server
+  if (!link) notFound();
+  return (
+    <article>
+      <h1>{link.title}</h1>
+      <p>{link.summary}</p>
+      <DeleteButton id={link.id} />               {/* only the id crosses the boundary */}
+    </article>
+  );
+}
+</script>
+
+<script type="text/plain" class="code" data-lang="tsx" data-title="app/links/[id]/DeleteButton.tsx (client component)">
+"use client";
+import { useTransition } from "react";
+import { deleteLink } from "./actions";
+
+export function DeleteButton({ id }: { id: string }) {
+  const [pending, startTransition] = useTransition();
+  return (
+    <button disabled={pending} onClick={() => startTransition(() => deleteLink(id))}>
+      {pending ? "Deleting…" : "Delete"}
+    </button>
+  );
+}
+</script>
+
+<script type="text/plain" class="code" data-lang="ts" data-title="app/links/[id]/actions.ts (server function)">
+"use server";
+import { z } from "zod";
+import { revalidatePath } from "next/cache";
+import { requireUser } from "@/server/auth";
+import { deleteLinkOwnedBy } from "@/server/links";
+
+export async function deleteLink(rawId: unknown) {
+  const id = z.string().uuid().parse(rawId);     // ① validate arguments
+  const user = await requireUser();              // ② must be logged in
+  await deleteLinkOwnedBy(id, user.id);          // ③ only delete rows owned by this user
+  revalidatePath("/links");                      // invalidate the list page's cache
+}
+</script>
+
+<p>About caching: Next.js caching has gone through several significant redesigns. The direction in Next 16 is <strong>dynamic by default, cache explicitly</strong>: declare which functions or components may be cached with the <code>"use cache"</code> directive, and invalidate with APIs like <code>revalidatePath</code> / <code>revalidateTag</code>. Versions differ a lot here, so trust the current official docs and state your Next.js version in instructions to the agent.</p>
+
+<h2 id="tanstack-start">TanStack Start <span class="badge use">Use</span></h2>
+
+<p>TanStack Start is built on TanStack Router and Vite. Its selling points are <strong>end-to-end type safety</strong> and being <strong>explicit</strong>: no implicit caching, and full type inference for route params, search params, loader return values, and server function inputs and outputs. It does SSR + streaming by default and behaves like an SPA on client navigation. Server Components support is being added in non-breaking steps after v1.</p>
+
+<script type="text/plain" class="code" data-lang="text" data-title="TanStack Start project structure (LinkNote)">
+src/
+├── routes/
+│   ├── __root.tsx          # root route: document shell, global layout
+│   ├── index.tsx           # route /
+│   └── links/
+│       ├── index.tsx       # route /links
+│       └── $id.tsx         # route /links/:id ($ marks a dynamic segment)
+├── server/                 # server-only code
+└── router.tsx              # creates the router
+</script>
+
+<script type="text/plain" class="code" data-lang="tsx" data-title="src/routes/links/index.tsx">
+import { createFileRoute } from "@tanstack/react-router";
+import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
+import { listLinks } from "@/server/links";
+
+// Server function: runs only on the server; client calls go over the network automatically
+const getLinks = createServerFn({ method: "GET" })
+  .inputValidator(z.object({ tag: z.string().optional() }))
+  .handler(({ data }) => listLinks({ tag: data.tag }));
+
+export const Route = createFileRoute("/links/")({
+  // URL search params get a schema too: ?tag=react is validated and typed
+  validateSearch: z.object({ tag: z.string().optional() }),
+  loaderDeps: ({ search }) => ({ tag: search.tag }),
+  loader: ({ deps }) => getLinks({ data: { tag: deps.tag } }),
+  component: LinksPage,
+});
+
+function LinksPage() {
+  const links = Route.useLoaderData();     // type inferred from the loader
+  const { tag } = Route.useSearch();       // type inferred from validateSearch
+  return <BookmarkList items={links} activeTag={tag} />;
+}
+</script>
+
+<p>Note that <code>createServerFn</code>, like Next.js's <code>'use server'</code>, is essentially a network endpoint and needs validation and auth too — <code>inputValidator</code> handles the first; auth you add yourself (usually via middleware).</p>
+
+<h2 id="choose">How to choose</h2>
+
+<table>
+  <thead><tr><th></th><th>Next.js</th><th>TanStack Start</th></tr></thead>
+  <tbody>
+    <tr><td>Maturity & material</td><td>Highest; agents know it best</td><td>Newer; material growing fast</td></tr>
+    <tr><td>Server Components</td><td>Full support, the default mode</td><td>Arriving incrementally after v1</td></tr>
+    <tr><td>Type-safe routing</td><td>Basic support</td><td>Core selling point: params, search, loaders all inferred</td></tr>
+    <tr><td>Mental model</td><td>Many conventions, more implicit behavior (caching, boundaries)</td><td>Explicit; closer to "an SPA with SSR"</td></tr>
+    <tr><td>Build tool</td><td>Turbopack</td><td>Vite (ecosystem plugins just work)</td></tr>
+    <tr><td>Deployment</td><td>Best on Vercel; elsewhere via adapters (e.g. OpenNext)</td><td>Vite-based, fairly neutral: Cloudflare, Node, Vercel, etc.</td></tr>
+  </tbody>
+</table>
+
+<p>Also worth knowing: <strong>React Router v7</strong> (the full-stack mode after Remix merged in, loader/action style); <strong>Astro</strong> (first choice for content sites, zero JS by default with interactive islands on demand); if you later touch Vue or Svelte, their meta-frameworks are Nuxt and SvelteKit, with the same concepts as this chapter. <span class="badge aware">Aware</span></p>
+
+<h2 id="waterfalls">Request waterfalls and Suspense</h2>
+
+<p>Server components make "just await data inside the component" very natural — which also makes <strong>request waterfalls</strong> easy: the parent awaits before rendering the child, the child awaits its own data, and total time is the sum of the layers.</p>
+
+<script type="text/plain" class="code" data-lang="tsx">
+import { Suspense } from "react";
+
+export default async function Dashboard() {
+  const user = await getUser();                 // fast: 50ms
+  return (
+    <>
+      <Header user={user} />
+      <Suspense fallback={<LinksSkeleton />}>
+        <RecentLinks userId={user.id} />         {/* slow: 800ms, doesn't block the rest */}
+      </Suspense>
+      <Suspense fallback={<StatsSkeleton />}>
+        <Stats userId={user.id} />               {/* runs in parallel with RecentLinks */}
+      </Suspense>
+    </>
+  );
+}
+</script>
+
+<p><code>Suspense</code> marks a region that "may arrive later": the page shell streams to the browser first and shows skeletons; as each region's data becomes ready, its HTML fragment streams in over the same response and replaces the skeleton. The two Suspense regions don't wait for each other.</p>
+
+<div class="callout project">
+  <span class="callout-title">Where this lands in LinkNote</span>
+  <ul>
+    <li><strong>Home / about page</strong>: static generation (SSG), served from the CDN.</li>
+    <li><strong>Bookmark list</strong>: SSR + streaming; filters in the URL; per-user data, not CDN-cached.</li>
+    <li><strong>Bookmark detail</strong>: a server component renders the summary (the Markdown library never reaches the browser); the delete button is a client component.</li>
+    <li><strong>"Ask my bookmarks" chat</strong>: mostly client components (streaming interaction, Chapter 11); the server calls the LLM.</li>
+  </ul>
+</div>
+
+<div class="callout agent">
+  <span class="callout-title">Tell the agent</span>
+  <div class="compare">
+    <div class="head bad">Vague</div><div class="head good">Precise</div>
+    <div class="bad">"Add a delete button to the detail page."</div>
+    <div class="good">"Keep the detail page a server component. Add a client component DeleteButton that receives only the id. Write the delete logic as a Server Action: Zod-validate the id, require login, delete only if the row belongs to the current user, and revalidate /links on success. Don't turn the whole page into a client component."</div>
+    <div class="row-sep"></div>
+    <div class="bad">"The page has a hydration error, fix it."</div>
+    <div class="good">"The page has a hydration mismatch; the error is below. First find which values compute differently on server vs browser (time, random numbers, window/localStorage), list them and explain the fix for each. Don't paper over it with suppressHydrationWarning."</div>
+  </div>
+  <p>This chapter's vocabulary: server / client components, client boundary, serializable props, hydration / hydration mismatch, streaming, Suspense boundary, request waterfall, static / dynamic rendering, revalidation.</p>
+</div>
+
+<div class="callout interview">
+  <span class="callout-title">Interview corner</span>
+  <ul>
+    <li><strong>Pros and cons of SSR vs CSR?</strong> Compare on time-to-visible, time-to-interactive, SEO, server cost and implementation complexity.</li>
+    <li><strong>How do RSC and SSR differ?</strong> SSR is about "when and where to render to HTML"; RSC is about "where a component exists and whether its code ships to the browser". They're complementary.</li>
+    <li><strong>What is hydration, and when does it fail?</strong> The client reuses server HTML and attaches events; it fails when the first client render differs from the server's.</li>
+    <li><strong>What are the security risks of Server Actions?</strong> They're public endpoints needing validation, authentication and authorization; variables captured in closures may also be serialized to the client.</li>
+  </ul>
+</div>
+
+<h2 id="check">Self-check</h2>
+
+<details class="check">
+  <summary>1. A client component does <code>import { db } from "@/server/db"</code> just to use one TypeScript type exported there. What's the problem, and how should it be written?</summary>
+  <div class="answer"><p>A normal import makes the bundler include the <code>db</code> module (possibly with the DB driver and connection string) in browser JS, or fail the build. When you only need a type, write <code>import type { ... }</code>, which is fully deleted at compile time. Adding <code>import "server-only"</code> to server modules makes this kind of mistake surface at build time.</p></div>
+</details>
+
+<details class="check">
+  <summary>2. A blog post page gets updated once a day, gets heavy traffic, and needs no login. Which rendering mode would you choose, and why not SSR?</summary>
+  <div class="answer"><p>Static generation or cached rendering with timed revalidation (ISR / "use cache" with time-based invalidation). SSR would redo identical work on every request, adding server cost and latency, while content that changes once a day can easily be cached or pre-generated and served from a CDN.</p></div>
+</details>
+
+<details class="check">
+  <summary>3. A server component passes <code>onDelete={() =&gt; deleteLink(id)}</code> as a prop to a client component. What happens?</summary>
+  <div class="answer"><p>An error: plain functions aren't serializable and can't cross the server/client boundary. What can be passed is a Server Function itself (a function marked 'use server' is serialized as a reference), or just the id, letting the client component import and call the Server Function itself.</p></div>
+</details>
+
+</article></main>
+</body>
+</html>

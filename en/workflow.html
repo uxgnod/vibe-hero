@@ -1,0 +1,324 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Driving Coding Agents · Vibe Hero</title>
+<meta name="description" content="Explore, spec, plan, implement, verify, review: describe requirements in precise vocabulary, control the pace, and review agent designs and code.">
+<!-- seo -->
+<link rel="canonical" href="https://uxgnod.github.io/vibe-hero/en/workflow.html">
+<link rel="alternate" hreflang="zh-CN" href="https://uxgnod.github.io/vibe-hero/zh/workflow.html">
+<link rel="alternate" hreflang="en" href="https://uxgnod.github.io/vibe-hero/en/workflow.html">
+<link rel="alternate" hreflang="x-default" href="https://uxgnod.github.io/vibe-hero/en/workflow.html">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Vibe Hero">
+<meta property="og:title" content="Driving Coding Agents · Vibe Hero">
+<meta property="og:description" content="Explore, spec, plan, implement, verify, review: describe requirements in precise vocabulary, control the pace, and review agent designs and code.">
+<meta property="og:url" content="https://uxgnod.github.io/vibe-hero/en/workflow.html">
+<meta property="og:image" content="https://uxgnod.github.io/vibe-hero/assets/og-image.png">
+<meta property="og:locale" content="en_US">
+<meta property="og:locale:alternate" content="zh_CN">
+<meta name="twitter:card" content="summary_large_image">
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "TechArticle", "headline": "Driving Coding Agents", "description": "Explore, spec, plan, implement, verify, review: describe requirements in precise vocabulary, control the pace, and review agent designs and code.", "inLanguage": "en", "url": "https://uxgnod.github.io/vibe-hero/en/workflow.html", "image": "https://uxgnod.github.io/vibe-hero/assets/og-image.png", "dateModified": "2026-09-26", "author": {"@type": "Person", "name": "uxgnod", "url": "https://github.com/uxgnod"}, "isPartOf": {"@type": "WebSite", "name": "Vibe Hero", "url": "https://uxgnod.github.io/vibe-hero/"}}</script>
+<link rel="icon" href="../assets/favicon.svg">
+<link rel="stylesheet" href="../assets/style.css">
+<script>try{var t=localStorage.getItem('vh-theme');if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+<script defer src="../assets/app.js"></script>
+<script defer src="../assets/widgets.js"></script>
+</head>
+<body>
+<main class="content"><article class="doc">
+
+<p class="eyebrow">CHAPTER 13 · MASTERY</p>
+<h1>Driving Coding Agents</h1>
+<p class="lead">The previous twelve chapters gave you mental models and vocabulary. This one assembles them into a repeatable workflow: how to turn fuzzy intent into a spec an agent can execute precisely, where to step in, and how to review output efficiently. The goal is for you to <strong>always hold the direction and the pace</strong>, instead of being pushed along by whatever the agent produces.</p>
+<div class="meta"><span>⏱ ~60 min</span><span class="badge deep">Deep</span> (why it works this way) <span class="badge use">Use</span> (templates and checklists to take away)</div>
+
+<div class="goals">
+  <div class="goals-title">By the end of this chapter you should be able to:</div>
+  <ul>
+    <li>Drive a feature through "explore → spec → plan → implement → verify → review" and know which points you must decide yourself.</li>
+    <li>Write a task description using the six-element template.</li>
+    <li>Translate a vague symptom ("the page is slow", "the data is wrong") into precise technical language.</li>
+    <li>Review an agent-generated PR in 10 minutes with a checklist.</li>
+    <li>Recognize the signs of an agent going in circles and know what to do.</li>
+  </ul>
+</div>
+
+<h2 id="question">Opening: two developers, one feature</h2>
+
+<div class="callout question">
+  <span class="callout-title">Opening question</span>
+  <p>A and B use the same agent to add "filter by tag" to LinkNote. A types "add a tag filter" and spends two hours going back and forth: the agent uses useState, A says the filter is lost on refresh; the agent switches to localStorage, A says others don't see the filter in shared links; the agent switches to a URL param but "helpfully" refactors the list component and breaks pagination… B spends 15 minutes writing a description, and the agent finishes in one go with all tests passing. <strong>What did B do right?</strong></p>
+</div>
+
+<p><strong>Where the answer lies:</strong> A is making the agent guess the requirements by trial and error, exposing one hidden requirement per round; B said the hidden requirements out loud before starting: filter state in the URL (shareable, survives refresh), don't touch pagination, and what "done" means. Agents execute extremely well, but they <strong>can't read requirements you never stated</strong>. B's 15 minutes weren't "writing docs" — they were <strong>design</strong>, which is your core job in the agent era.</p>
+
+<h2 id="loop">The workflow at a glance</h2>
+
+<figure class="diagram">
+<div class="diagram-scroll">
+<svg viewBox="0 0 780 330" role="img" aria-label="Agent-assisted development workflow">
+  <defs><marker id="wf1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="ar-accent"/></marker>
+  <marker id="wf2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="ar-deep"/></marker></defs>
+  <g font-size="12.5">
+    <rect x="20" y="40" width="120" height="70" rx="12" class="box-soft"/><text x="80" y="68" text-anchor="middle" font-weight="700">① Explore</text><text x="80" y="88" text-anchor="middle" font-size="11" class="t-soft">agent investigates</text>
+    <rect x="170" y="40" width="120" height="70" rx="12" class="box-deep"/><text x="230" y="68" text-anchor="middle" font-weight="700">② Spec</text><text x="230" y="88" text-anchor="middle" font-size="11" class="t-soft">you define the what</text>
+    <rect x="320" y="40" width="120" height="70" rx="12" class="box-deep"/><text x="380" y="68" text-anchor="middle" font-weight="700">③ Plan</text><text x="380" y="88" text-anchor="middle" font-size="11" class="t-soft">you approve it</text>
+    <rect x="470" y="40" width="120" height="70" rx="12" class="box-accent"/><text x="530" y="68" text-anchor="middle" font-weight="700">④ Implement</text><text x="530" y="88" text-anchor="middle" font-size="11" class="t-soft">agent, in small steps</text>
+    <rect x="620" y="40" width="140" height="70" rx="12" class="box-ok"/><text x="690" y="68" text-anchor="middle" font-weight="700">⑤ Verify</text><text x="690" y="88" text-anchor="middle" font-size="11" class="t-soft">types · tests · preview</text>
+    <rect x="470" y="200" width="140" height="70" rx="12" class="box-deep"/><text x="540" y="228" text-anchor="middle" font-weight="700">⑥ Review</text><text x="540" y="248" text-anchor="middle" font-size="11" class="t-soft">you read the key diffs</text>
+    <rect x="250" y="200" width="140" height="70" rx="12" class="box-soft"/><text x="320" y="228" text-anchor="middle" font-weight="700">⑦ Commit / merge</text><text x="320" y="248" text-anchor="middle" font-size="11" class="t-soft">small PRs · CI gates</text>
+    <rect x="20" y="200" width="160" height="70" rx="12" class="box-use"/><text x="100" y="228" text-anchor="middle" font-weight="700">⑧ Capture</text><text x="100" y="248" text-anchor="middle" font-size="11" class="t-soft">update AGENTS.md / tests</text>
+  </g>
+  <line x1="140" y1="75" x2="167" y2="75" class="ln-accent" marker-end="url(#wf1)"/>
+  <line x1="290" y1="75" x2="317" y2="75" class="ln-accent" marker-end="url(#wf1)"/>
+  <line x1="440" y1="75" x2="467" y2="75" class="ln-accent" marker-end="url(#wf1)"/>
+  <line x1="590" y1="75" x2="617" y2="75" class="ln-accent" marker-end="url(#wf1)"/>
+  <path d="M690 112 L690 150 L560 150 L560 197" class="ln-accent" marker-end="url(#wf1)"/>
+  <line x1="468" y1="235" x2="393" y2="235" class="ln-accent" marker-end="url(#wf1)"/>
+  <line x1="248" y1="235" x2="183" y2="235" class="ln-accent" marker-end="url(#wf1)"/>
+  <path d="M640 40 C 640 10, 540 10, 540 36" class="ln-deep ln-dash" marker-end="url(#wf2)"/>
+  <text x="590" y="16" text-anchor="middle" font-size="11" class="t-deep">fail → back to implement (the agent loops itself)</text>
+  <path d="M100 198 C 100 150, 60 140, 70 114" class="ln ln-dash"/>
+  <text x="390" y="310" text-anchor="middle" font-size="12" class="t-soft">Red nodes are where you must decide personally; blue and green nodes can largely go to the agent and automated checks.</text>
+</svg>
+</div>
+<figcaption>The full loop for one feature. Small features can merge steps (explore and plan together), but "spec" and "review" can't be skipped.</figcaption>
+</figure>
+
+<h3>① Explore: have the agent investigate before it touches anything</h3>
+<p>For unfamiliar code or complex changes, the first instruction should be "investigate and report", not "implement". For example: "How does the list page load its data? Where do filter and pagination state live? Read only, change nothing, give me a short report." It's cheap, and it exposes your own wrong assumptions.</p>
+
+<h3>② Spec: your core output</h3>
+<p>See the six-element template in the next section.</p>
+
+<h3>③ Plan: reject the wrong direction when it's cheapest</h3>
+<p>Have the agent produce a plan before writing code (many tools have a dedicated "plan mode"). Reviewing a plan is ten times cheaper than reviewing code. Ask of the plan:</p>
+<ul>
+  <li>Do the files it intends to touch match what I expected? Anything out of scope?</li>
+  <li>Any data-model changes, new dependencies, DB migrations? Those need my explicit OK.</li>
+  <li>Are security aspects (auth, validation) covered?</li>
+  <li>What's the test plan? How will it prove it's done?</li>
+</ul>
+
+<h3>④ Implement: small, verifiable, committable steps</h3>
+<p>Cut work into <strong>vertical slices</strong>: each slice is the smallest end-to-end runnable piece ("first make the URL param filter the list; no UI yet"), rather than "all DB code, then all endpoints, then all UI". Run checks and commit after each slice. If something breaks, you roll back one small step.</p>
+
+<h3>⑤ Verify: let the machines check first</h3>
+<p>Chapter 10's Definition of Done kicks in here: the agent may only say "done" when type checks, lint and tests all pass. For UI, open the preview link and click through yourself — nothing automated replaces that.</p>
+
+<h3>⑥ Review → ⑦ Merge → ⑧ Capture</h3>
+<p>Review method below. After merging, spend one minute asking: what did I have to tell the agent more than once? Write it into AGENTS.md or turn it into a test or lint rule. <strong>Every correction should happen only once.</strong></p>
+
+<h2 id="spec">The six elements of a task description</h2>
+
+<table>
+  <thead><tr><th>Element</th><th>Question it answers</th><th>Typical result when missing</th></tr></thead>
+  <tbody>
+    <tr><td><strong>1. Goal & context</strong></td><td>Why? For whom?</td><td>Technically correct, solves the wrong problem</td></tr>
+    <tr><td><strong>2. Scope</strong></td><td>What to do, <em>and explicitly what not to do</em></td><td>The agent "optimizes" unrelated code on the way</td></tr>
+    <tr><td><strong>3. Constraints</strong></td><td>Required / forbidden tech, patterns, dependencies</td><td>New libraries, a different state approach, strict checks turned off</td></tr>
+    <tr><td><strong>4. Interfaces & data</strong></td><td>Shape of the data, where it lives, function signatures</td><td>A different data model every time; front and back don't line up</td></tr>
+    <tr><td><strong>5. Acceptance criteria</strong></td><td>What counts as done? (executable, observable)</td><td>"Looks like it works", every edge case missed</td></tr>
+    <tr><td><strong>6. Deliverables</strong></td><td>What to hand back: code, tests, notes, screenshots</td><td>No idea what changed or how to verify</td></tr>
+  </tbody>
+</table>
+
+<script type="text/plain" class="code" data-lang="md" data-title="Example: LinkNote tag-filter task description">
+## Goal
+Once users have many bookmarks they need to narrow down by tag quickly. The filtered view should be shareable to their other devices via a link.
+
+## Scope
+- Do: a tag picker at the top of the list page; filter by a single tag; clear the filter
+- Don't: multi-tag combinations, tag management, any change to pagination logic
+
+## Constraints
+- Filter state lives in the URL query param `tag` (via the route's validateSearch + Zod)
+- Filter in the server query (a where condition), not by fetching everything and filtering on the client
+- Tag comparison is case-insensitive
+- No new dependencies; don't modify src/components/Pagination.tsx
+
+## Interfaces & data
+- links.tags is a jsonb string array (see src/db/schema.ts)
+- New service parameter: list(userId, { tag?: string })
+- Tag options come from a new function listTags(userId): all distinct tags for that user
+
+## Acceptance criteria
+- /links?tag=React and /links?tag=react return the same results
+- The filter survives refresh and copying the link into a new window
+- No matches shows an empty state with a "Clear filter" button
+- Unit tests: case differences, bookmarks with no tags, a nonexistent tag
+- E2E: pick a tag → URL changes → list updates → clear → everything returns
+- typecheck, lint and test all pass
+
+## Deliverables
+- Give me a plan first; implement after I confirm
+- When done, list changed files, what changed in each, and how I can verify by hand
+</script>
+
+<p>A description like this takes 10–15 minutes. It forces <strong>you</strong> to decide first: where state lives, which layer filters, what the edge cases are. Leave those decisions for the agent to make implicitly and you get A's two hours.</p>
+
+<div class="callout tip">
+  <span class="callout-title">When you can't write the description</span>
+  <p>If you can't write acceptance criteria, you probably haven't decided what you want yet. Then flip it and let the agent help: "I want tag filtering. Interview me to clarify the requirements, one question at a time, then write it up as a task description." That uses the agent for requirements analysis instead of making it guess.</p>
+</div>
+
+<h2 id="vocabulary">Precise language: from symptom to term</h2>
+
+<p>What you observe is usually a "symptom"; what the agent needs is a "direction for diagnosis". This table maps common vague descriptions to precise expressions from earlier chapters. Fluency with these words is the most direct lever you have over an agent:</p>
+
+<table>
+  <thead><tr><th>What you see</th><th>A likely precise expression</th><th>Ch.</th></tr></thead>
+  <tbody>
+    <tr><td>The page keeps re-requesting an endpoint</td><td>useEffect depends on an unstable reference, forming a "render → effect → setState" loop</td><td>06</td></tr>
+    <tr><td>Changed the data, UI didn't update</td><td>State object was mutated; reference unchanged; use an immutable update</td><td>03 / 06</td></tr>
+    <tr><td>Filter / pagination lost on refresh</td><td>That state belongs in URL query params, not component-local state</td><td>06</td></tr>
+    <tr><td>Search results don't match the input</td><td>Request race: an older request returned after a newer one; cancel or discard stale results by key</td><td>06</td></tr>
+    <tr><td>Same data shown differently in two places</td><td>Stored derived state / no single source of truth; or a cache that wasn't invalidated</td><td>06 / 08</td></tr>
+    <tr><td>First page load is slow</td><td>Too much first-screen JS / request waterfall / should be server-rendered or streamed</td><td>07</td></tr>
+    <tr><td>Page shows one thing, then flashes to another</td><td>Hydration mismatch / client refetching data</td><td>07</td></tr>
+    <tr><td>Others can see or delete my data</td><td>Missing authorization (IDOR); put the ownership condition in the query</td><td>08</td></tr>
+    <tr><td>API errors in the browser, curl works</td><td>CORS: declare allowed origins and credentials, or go same-origin</td><td>05</td></tr>
+    <tr><td>Occasional lost data or wrong counts after deploy</td><td>Shared state kept in serverless instance memory</td><td>09</td></tr>
+    <tr><td>"Too many connections" at peak</td><td>Connection explosion under serverless; need a pooling proxy or HTTP driver</td><td>08</td></tr>
+    <tr><td>Batch processing "finishes early"</td><td>forEach(async) not awaited; or a floating promise</td><td>03</td></tr>
+    <tr><td>AI answers take ages to appear</td><td>No streaming; time to first token (TTFT) too long</td><td>11</td></tr>
+    <tr><td>AI output format is right only sometimes</td><td>Missing structured output and schema validation</td><td>11</td></tr>
+    <tr><td>The agent gets messier and repeats mistakes</td><td>Context too long or polluted; write progress to a file and start a new session</td><td>12</td></tr>
+  </tbody>
+</table>
+
+<p>Note the word "likely". These expressions are <strong>hypotheses</strong>, not conclusions. The good move is to give the agent both the symptom and your hypothesis, and require it to verify first: "I suspect a request race; add logging first to confirm the order requests are sent and returned, then fix it."</p>
+
+<h2 id="review">Reviewing agent output</h2>
+
+<h3>Reviewing a design</h3>
+<p>When an agent hands you a design doc or technical proposal, the point isn't polished prose but:</p>
+<ul>
+  <li><strong>Requirement coverage</strong>: does every acceptance criterion map to an implementation approach?</li>
+  <li><strong>Data model</strong>: are new tables / fields sensible? Will changing them later be painful?</li>
+  <li><strong>Failure modes</strong>: what happens on network failure, LLM timeout, double submission, concurrent edits?</li>
+  <li><strong>Alternatives</strong>: which other approaches did it consider, and why not them? — if none, ask: "Give me two alternatives and the trade-offs."</li>
+  <li><strong>Over-engineering</strong>: abstraction layers, plugin systems or generic frameworks built for imagined future needs?</li>
+</ul>
+
+<h3>Reviewing code: a 10-minute checklist</h3>
+
+<p>Don't start reading line by line from the first file. Go from highest information density down:</p>
+<ol class="steps">
+  <li><strong>Scope of change</strong>: does the list of modified files match expectations? Anything from the "don't" list touched?</li>
+  <li><strong>Data structures</strong>: schemas, type definitions, Zod schemas, DB migrations. They decide the shape of everything else.</li>
+  <li><strong>Tests</strong>: do they cover the acceptance criteria? <strong>Were existing tests modified</strong> (Chapter 10)?</li>
+  <li><strong>Boundaries</strong>: is external input validated? Is the authorization condition there? Did secrets leak into client code?</li>
+  <li><strong>Search for red flags</strong>: <code>any</code>, <code>as</code>, <code>!</code>, <code>@ts-ignore</code>, <code>eslint-disable</code>, empty <code>catch</code>, new dependencies, <code>useEffect</code>.</li>
+  <li><strong>Core logic last</strong>: by now you know what it should look like, so it reads much faster.</li>
+</ol>
+
+<div class="callout tip">
+  <span class="callout-title">Let another agent help review</span>
+  <p>Open a new session (or a subagent), give it only the task description and the diff, and have it find problems with the checklist above. It hasn't been "convinced" by the implementation process and often catches what the implementing session can't see. The final call is still yours.</p>
+</div>
+
+<h2 id="rhythm">Controlling the pace</h2>
+
+<h3>When to step in</h3>
+<ul>
+  <li><strong>Three failed attempts at the same problem</strong>: stop. Don't say "try again". Ask the agent for hypotheses and evidence, or look at the error yourself. Letting it keep guessing only makes the context messier.</li>
+  <li><strong>It starts changing things outside the described scope</strong>: point it out immediately and ask for a revert.</li>
+  <li><strong>It proposes turning off checks, skipping tests, adding dependencies</strong>: all need your explicit approval.</li>
+  <li><strong>The diff is too big to want to read</strong>: the task was cut too large. Roll back, slice smaller, retry.</li>
+</ul>
+
+<h3>Collaborating on debugging</h3>
+<script type="text/plain" class="code" data-lang="md" data-title="Bug report template">
+## Symptom
+On /links?tag=react, clicking "Clear filter" still shows only react-tagged bookmarks; refreshing fixes it.
+
+## Steps to reproduce
+1. Open /links?tag=react
+2. Click "Clear filter"
+
+## Expected / actual
+Expected: URL becomes /links and the list shows everything
+Actual: URL becomes /links but the list doesn't update
+
+## What I know
+- No console errors; the network panel shows no new request is sent
+- I suspect the loader's cache key doesn't include tag
+
+## Ask
+First propose 2–3 possible causes ranked by likelihood and how to verify each; verify, then fix, and add a test that reproduces the problem.
+</script>
+
+<p>The key: <strong>give evidence, ask for hypotheses, verify before changing</strong>. That turns the agent from "guess a fix" into "run a small scientific experiment".</p>
+
+<h3>When to do it yourself</h3>
+<p>A one-line config change, a small bug you already know how to fix, UI tweaks that need taste — doing it yourself is often faster than describing it to an agent. You don't have to use an agent for everything.</p>
+
+<h3>Running in parallel</h3>
+<p>Once fluent, you can run several agents on independent tasks at once (one building a feature, one adding tests, one investigating a performance issue), each on its own git worktree or branch. The precondition: the tasks really are independent and you have the bandwidth to review everything — your review capacity is always the bottleneck of parallelism.</p>
+
+<h2 id="agents-md">Writing AGENTS.md well</h2>
+
+<ul>
+  <li><strong>Short and specific</strong>: it occupies context in every session. Write "use pnpm", not an essay on package managers.</li>
+  <li><strong>Write what the agent can't guess</strong>: project-specific conventions, known pitfalls, prohibitions. Generic framework knowledge doesn't belong.</li>
+  <li><strong>Point, don't copy</strong>: "DB conventions: see docs/db.md" lets the agent read it when needed.</li>
+  <li><strong>Layer it</strong>: global conventions at the root; local ones in subdirectories (e.g. <code>apps/api/AGENTS.md</code>).</li>
+  <li><strong>Keep it alive</strong>: update it whenever you notice a repeated correction; delete lines that go stale.</li>
+</ul>
+
+<h2 id="tools">How the tools differ <span class="badge aware">Aware</span></h2>
+
+<p>Claude Code, Codex CLI, pi, Cursor and IDE agents share the same underlying principles (Chapter 12), and this chapter's methods apply to all of them. The differences are mostly in harness philosophy: some ship rich built-ins (plan mode, subagents, hooks, plugin marketplaces, cloud runs), others are deliberately minimal and let you assemble what you need via extensions. When choosing, look at: model support, the project-instructions file convention, permission granularity, whether it can run unattended (CI, batch jobs), and whether you like how it feels. No need to chase every new tool — the workflow and your ability to express yourself are the assets that transfer.</p>
+
+<h2 id="antipatterns">Anti-patterns</h2>
+
+<table>
+  <thead><tr><th>Anti-pattern</th><th>Why it hurts</th><th>Instead</th></tr></thead>
+  <tbody>
+    <tr><td>Never reading code, only checking the result</td><td>Security holes and data-model problems don't show in the UI</td><td>At least review data structures, tests and boundaries with the checklist</td></tr>
+    <tr><td>"Fix all the errors"</td><td>The agent makes errors vanish the fastest way (any, as, ignore)</td><td>Add constraints: forbidden escape hatches; explain before fixing</td></tr>
+    <tr><td>One session all day</td><td>Context rot; quality drops later on</td><td>One task per session; progress written to files</td></tr>
+    <tr><td>One giant requirement at once</td><td>Vague plan, huge diff, unreviewable</td><td>Vertical slices, each verifiable</td></tr>
+    <tr><td>Letting the agent make architecture decisions silently</td><td>Where state lives, which layer filters, which library — these shape the project for a long time</td><td>State them in the spec, or approve them at plan time</td></tr>
+    <tr><td>Building the perfect toolchain before building the product</td><td>Time goes into preparing instead of shipping</td><td>Ship a minimal working version first; add tools when real problems appear</td></tr>
+  </tbody>
+</table>
+
+<div class="callout interview">
+  <span class="callout-title">Interview corner: "How do you use AI coding tools?"</span>
+  <p>This question is extremely common in 2026 interviews. A good answer isn't "I use tool X and I'm N× faster" but a demonstration of your <strong>method and judgment</strong>:</p>
+  <ul>
+    <li>Write specs and acceptance criteria first, then let the agent implement; review the plan first for complex tasks.</li>
+    <li>Use type checks, tests and CI as an automated verification net instead of reading every line.</li>
+    <li>Review focus: data models, authorization and validation, whether tests were modified, new dependencies.</li>
+    <li>Give an example of catching a subtle agent mistake (an IDOR, an effect loop) and how you caught it.</li>
+    <li>Explain how you turn repeated corrections into project instructions, hooks or lint rules.</li>
+  </ul>
+</div>
+
+<h2 id="check">Self-check</h2>
+
+<details class="check">
+  <summary>1. Rewrite this request as a six-element task description (abbreviated is fine): "Add an export feature to LinkNote."</summary>
+  <div class="answer">
+    <p>Reference points: goal (users want to back up or migrate bookmarks); scope (export all of the current user's bookmarks as JSON and Markdown; no import, no scheduled exports); constraints (generated server-side, streamed download to avoid memory issues with large data; no new dependencies); data (url, title, summary, tags, createdAt; exclude internal id and userId); acceptance (1,000 bookmarks export without timing out; users can export only their own data; file name includes the date; tests exist); deliverables (plan first).</p>
+    <p>The point isn't matching this exactly, but whether you thought of "what not to do", authorization, data volume and verification on your own.</p>
+  </div>
+</details>
+
+<details class="check">
+  <summary>2. The agent has tried three times to fix "the list sometimes shows stale data", each time saying "fixed", but it still happens. What should your next message say?</summary>
+  <div class="answer"><p>Stop the attempts. Something like: "Don't change code yet. List at least three possible causes of the list showing stale data (cache not invalidated, request race, server-side cache), and how to verify each with logs or tests. Then add logging and give me reproduction steps; we'll fix it once the evidence points to a cause." If the session is already long, have it write findings to a file and continue in a new session.</p></div>
+</details>
+
+<details class="check">
+  <summary>3. The agent's PR touches 23 files, 15 of which are "code style cleanup while I was there". What do you do?</summary>
+  <div class="answer"><p>Ask for a split: move the style changes out of this PR (or just revert them) and keep only the feature changes. Mixed diffs hide the real logic changes, make review hard, and raise conflict and rollback costs. Then add to AGENTS.md: "Don't modify files outside the task's scope; formatting is the formatter's job."</p></div>
+</details>
+
+</article></main>
+</body>
+</html>

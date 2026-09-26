@@ -1,0 +1,300 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Three Deployment Paths · Vibe Hero</title>
+<meta name="description" content="Long-running processes, on-demand function instances and V8 isolates; how Vercel, Cloudflare and self-hosting work, their limits, and how to choose.">
+<!-- seo -->
+<link rel="canonical" href="https://uxgnod.github.io/vibe-hero/en/deploy.html">
+<link rel="alternate" hreflang="zh-CN" href="https://uxgnod.github.io/vibe-hero/zh/deploy.html">
+<link rel="alternate" hreflang="en" href="https://uxgnod.github.io/vibe-hero/en/deploy.html">
+<link rel="alternate" hreflang="x-default" href="https://uxgnod.github.io/vibe-hero/en/deploy.html">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Vibe Hero">
+<meta property="og:title" content="Three Deployment Paths · Vibe Hero">
+<meta property="og:description" content="Long-running processes, on-demand function instances and V8 isolates; how Vercel, Cloudflare and self-hosting work, their limits, and how to choose.">
+<meta property="og:url" content="https://uxgnod.github.io/vibe-hero/en/deploy.html">
+<meta property="og:image" content="https://uxgnod.github.io/vibe-hero/assets/og-image.png">
+<meta property="og:locale" content="en_US">
+<meta property="og:locale:alternate" content="zh_CN">
+<meta name="twitter:card" content="summary_large_image">
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "TechArticle", "headline": "Three Deployment Paths", "description": "Long-running processes, on-demand function instances and V8 isolates; how Vercel, Cloudflare and self-hosting work, their limits, and how to choose.", "inLanguage": "en", "url": "https://uxgnod.github.io/vibe-hero/en/deploy.html", "image": "https://uxgnod.github.io/vibe-hero/assets/og-image.png", "dateModified": "2026-09-26", "author": {"@type": "Person", "name": "uxgnod", "url": "https://github.com/uxgnod"}, "isPartOf": {"@type": "WebSite", "name": "Vibe Hero", "url": "https://uxgnod.github.io/vibe-hero/"}}</script>
+<link rel="icon" href="../assets/favicon.svg">
+<link rel="stylesheet" href="../assets/style.css">
+<script>try{var t=localStorage.getItem('vh-theme');if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+<script defer src="../assets/app.js"></script>
+<script defer src="../assets/widgets.js"></script>
+</head>
+<body>
+<main class="content"><article class="doc">
+
+<p class="eyebrow">CHAPTER 09 · FULL-STACK</p>
+<h1>Three Deployment Paths: Vercel, Cloudflare, Self-Hosting</h1>
+<p class="lead">Choosing a platform is really choosing <strong>the shape of the runtime</strong>: is your code a process that stays alive, or instances woken on demand and reclaimed at any moment? Understand that difference and you can predict which code will "silently stop working" on which platform.</p>
+<div class="meta"><span>⏱ ~55 min</span><span class="badge deep">Deep</span> (runtime shapes and state) <span class="badge use">Use</span> (a full deploy on at least one platform)</div>
+
+<div class="goals">
+  <div class="goals-title">By the end of this chapter you should be able to:</div>
+  <ul>
+    <li>Compare the lifecycle and limits of long-running processes, on-demand function instances and V8 isolates.</li>
+    <li>Point out why a piece of code fails on serverless (in-memory state, timers, local files, long connections).</li>
+    <li>Describe the steps and key config for deploying LinkNote on Vercel, Cloudflare and your own server.</li>
+    <li>Pick a platform from project needs using a decision tree.</li>
+  </ul>
+</div>
+
+<h2 id="question">Opening: fine on my server, wrong in the cloud</h2>
+
+<div class="callout question">
+  <span class="callout-title">Opening question</span>
+  <p>LinkNote's API runs happily on your own server: a module-level <code>let requestCount = 0</code> does simple rate limiting; a <code>setInterval</code> clears stale drafts every hour; uploaded images are written to local <code>/tmp</code> before processing. After deploying to Vercel or Cloudflare: rate limiting works only sometimes, the cleanup never runs, and image processing occasionally reports a missing file. <strong>Not a line of code changed — why did the behavior?</strong></p>
+</div>
+
+<p><strong>Where the answer lies:</strong> on your own server, your code is <strong>one long-running process</strong>: variables in memory stay, timers keep running, local files stay put. On serverless platforms your code is <strong>many instances started on demand</strong>: 50 instances may each keep their own count; after handling a request an instance may be frozen or reclaimed, so timers don't keep running; each instance has its own temporary file system, and the next request may land on another instance. So: <strong>state can't live in memory, and scheduled jobs and file storage need the platform's dedicated primitives</strong>.</p>
+
+<h2 id="shapes">Three runtime shapes <span class="badge deep">Deep</span></h2>
+
+<table>
+  <thead><tr><th></th><th>Long-running process (self-host)</th><th>On-demand instances (Vercel Functions)</th><th>V8 isolate (Cloudflare Workers)</th></tr></thead>
+  <tbody>
+    <tr><td>Lifecycle</td><td>Runs until you restart it</td><td>Started on demand; reclaimed after idling</td><td>Created on demand, very light, reclaimable any time</td></tr>
+    <tr><td>Instance count</td><td>You decide (usually 1 to a few)</td><td>Auto-scaled, possibly many</td><td>Independent in each data center worldwide</td></tr>
+    <tr><td>Cold start</td><td>None</td><td>Yes (typically hundreds of ms; platforms optimize)</td><td>Near zero (ms)</td></tr>
+    <tr><td>In-memory variables</td><td>✓ reliably shared</td><td>✗ per instance only, not durable</td><td>✗ same</td></tr>
+    <tr><td>Background timers</td><td>✓</td><td>✗ use platform Cron</td><td>✗ use Cron Triggers / Durable Object alarms</td></tr>
+    <tr><td>Local files</td><td>✓</td><td>Temp dir only, not guaranteed across requests</td><td>✗ use R2 / KV</td></tr>
+    <tr><td>Execution time</td><td>Unlimited</td><td>Capped (by plan)</td><td>CPU time capped; time waiting on I/O doesn't count</td></tr>
+    <tr><td>WebSocket / long connections</td><td>✓</td><td>Limited</td><td>✓ via Durable Objects</td></tr>
+    <tr><td>Billing</td><td>Per machine (fixed)</td><td>Usage (CPU time, invocations)</td><td>Usage (CPU time, requests), very low unit price</td></tr>
+  </tbody>
+</table>
+
+<div class="callout analogy">
+  <span class="callout-title">Analogy</span>
+  <p>A long-running process is a shop you run yourself: the clerk (process) is always there and the ledger (memory) sits on the counter. Serverless is a temp agency: each job gets a temp worker who leaves when done, and the next job may go to someone else. The ledger can't live in a temp's pocket; it has to be somewhere everyone can reach (database, KV).</p>
+  <p><strong>Where it breaks:</strong> platforms reuse "warm" instances, so in-memory variables <em>sometimes</em> survive across requests — which is exactly why the bug shows up as "works sometimes". Don't rely on it, but you can use it for pure performance caching (e.g. reusing a DB client object).</p>
+</div>
+
+<h2 id="paths">One request, three paths</h2>
+
+<p>Switch tabs to see what the same request passes through on each platform:</p>
+
+<div data-widget="deploy-flow"></div>
+
+<h2 id="vercel">The Vercel path <span class="badge use">Use</span></h2>
+
+<p>Vercel's greatest value is the <strong>"git push to deploy"</strong> experience:</p>
+<ol class="steps">
+  <li>Import the GitHub repo in the Vercel dashboard; it detects the framework (Next.js, TanStack Start, Vite…) and build command.</li>
+  <li>Every push to main → a production deploy; <strong>every pull request → its own preview deployment</strong> with its own URL. This is enormously useful with agents: the agent opens a PR, you open the preview link and accept or reject.</li>
+  <li>Set env vars separately for Production / Preview / Development in the dashboard; sync locally with <code>vercel env pull</code>.</li>
+  <li>Databases, Redis, Blob and so on come from third parties via the Marketplace (Neon, Supabase, Upstash…), with env vars injected automatically.</li>
+</ol>
+
+<p>Limits to watch: functions have a max duration (by plan); long jobs belong in queues or workflows; team collaboration is priced per seat; some advanced Next.js features (ISR, image optimization) are most complete on Vercel, so verify each one when moving elsewhere.</p>
+
+<h2 id="cloudflare">The Cloudflare path <span class="badge use">Use</span></h2>
+
+<p>The central concept of Cloudflare Workers is the <strong>binding</strong>: you declare in config which resources you need (database, KV, buckets, queues…), and the runtime injects them into your code through the <code>env</code> object. No connection strings, no SDK keys.</p>
+
+<script type="text/plain" class="code" data-lang="jsonc" data-title="wrangler.jsonc">
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "linknote",
+  "main": "src/worker.ts",
+  "compatibility_date": "2026-09-01",          // pins runtime behavior to a version
+  "compatibility_flags": ["nodejs_compat"],     // enables the Node API compatibility layer
+  "assets": { "directory": "./dist/client" },   // static assets (frontend build)
+  "d1_databases": [{ "binding": "DB", "database_name": "linknote", "database_id": "<id>" }],
+  "kv_namespaces": [{ "binding": "CACHE", "id": "<id>" }],
+  "r2_buckets": [{ "binding": "FILES", "bucket_name": "linknote-files" }],
+  "queues": {
+    "producers": [{ "binding": "SUMMARIZE", "queue": "summarize" }],
+    "consumers": [{ "queue": "summarize", "max_retries": 3 }]
+  },
+  "triggers": { "crons": ["0 3 * * *"] }        // run scheduled() daily at 3:00
+}
+</script>
+
+<script type="text/plain" class="code" data-lang="ts" data-title="src/worker.ts">
+import { Hono } from "hono";
+
+// `wrangler types` can generate the Env type from your config
+type Env = { DB: D1Database; CACHE: KVNamespace; FILES: R2Bucket; SUMMARIZE: Queue<{ linkId: string }> };
+
+const app = new Hono<{ Bindings: Env }>();
+
+app.post("/api/links", async (c) => {
+  const { url } = await c.req.json<{ url: string }>();   // use zValidator in real code
+  const id = crypto.randomUUID();
+  await c.env.DB.prepare("INSERT INTO links (id, url, status) VALUES (?, ?, 'pending')").bind(id, url).run();
+  await c.env.SUMMARIZE.send({ linkId: id });             // enqueue and return immediately
+  return c.json({ id }, 202);
+});
+
+export default {
+  fetch: app.fetch,
+  async queue(batch, env) {                                // queue consumer: in the same Worker
+    for (const msg of batch.messages) {
+      await summarize(env, msg.body.linkId);
+      msg.ack();
+    }
+  },
+  async scheduled(_event, env) {                           // Cron trigger: replaces setInterval
+    await env.DB.prepare("DELETE FROM drafts WHERE created_at < datetime('now', '-7 days')").run();
+  },
+} satisfies ExportedHandler<Env, { linkId: string }>;
+</script>
+
+<h3>Cloudflare's storage and compute primitives</h3>
+
+<table>
+  <thead><tr><th>Product</th><th>What it is</th><th>LinkNote use</th></tr></thead>
+  <tbody>
+    <tr><td><strong>D1</strong></td><td>Managed SQLite</td><td>Bookmarks, user data</td></tr>
+    <tr><td><strong>KV</strong></td><td>Globally distributed key-value store, read-heavy, eventually consistent</td><td>Cached page titles, config</td></tr>
+    <tr><td><strong>R2</strong></td><td>Object storage, S3-compatible, no egress fees</td><td>Page snapshots, screenshots</td></tr>
+    <tr><td><strong>Durable Objects</strong></td><td>One globally unique, single-threaded object per ID, with its own storage</td><td>One agent instance per user (Chapter 12); realtime collaboration</td></tr>
+    <tr><td><strong>Queues / Workflows</strong></td><td>Message queue / durable multi-step workflows</td><td>Summary jobs</td></tr>
+    <tr><td><strong>Workers AI / AI Gateway / Vectorize</strong></td><td>Edge inference / LLM gateway (caching, rate limits, logs) / vector database</td><td>Embeddings, semantic search</td></tr>
+    <tr><td><strong>Hyperdrive</strong></td><td>Connection pooling and query caching for external Postgres</td><td>If you choose Postgres instead of D1</td></tr>
+  </tbody>
+</table>
+
+<p><strong>Durable Objects</strong> deserve a word, being Cloudflare-specific and the hardest primitive to grasp. They solve serverless's fundamental puzzle — "where does state live?": you get an object by an ID (a user ID, a chat room ID), and <strong>every request anywhere in the world for that ID is routed to the same instance</strong>. It processes one request at a time (no locks needed), has its own durable storage, and can hold WebSocket connections and set alarms. Cloudflare's Agents SDK is built on it.</p>
+
+<p>Deployment: <code>pnpm wrangler login</code> → create resources with <code>wrangler d1 create</code> etc. → <code>wrangler deploy</code>; or connect a Git repo in the dashboard for automatic deploys with preview URLs. Locally, Cloudflare's Vite plugin runs your code in the real workerd runtime and simulates D1, KV and other bindings. Set secrets with <code>wrangler secret put ANTHROPIC_API_KEY</code>.</p>
+
+<h2 id="selfhost">The self-hosted path <span class="badge use">Use</span></h2>
+
+<p>If you have ops experience, this path is the most familiar: build a Docker image, run it on a VPS, put a reverse proxy in front for HTTPS.</p>
+
+<script type="text/plain" class="code" data-lang="text" data-title="Dockerfile (multi-stage, Node app)">
+FROM node:24-slim AS build
+WORKDIR /app
+RUN npm install -g pnpm@10
+COPY package.json pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile
+COPY . .
+RUN pnpm build && pnpm prune --prod
+
+FROM node:24-slim
+WORKDIR /app
+ENV NODE_ENV=production
+COPY --from=build /app/package.json ./
+COPY --from=build /app/node_modules ./node_modules
+COPY --from=build /app/dist ./dist
+USER node
+EXPOSE 3000
+CMD ["node", "dist/server.js"]
+</script>
+
+<script type="text/plain" class="code" data-lang="text" data-title="Caddyfile (automatic HTTPS certificates)">
+linknote.example.com {
+  reverse_proxy app:3000
+}
+</script>
+
+<p>Tools that make self-hosting painless: <strong>Coolify</strong> and <strong>Dokploy</strong> (open-source self-hosted PaaS with Vercel-like Git deploys, preview environments, one-click databases); <strong>Kamal</strong> (zero-downtime Docker deploys to any server). A common setup adds Cloudflare's CDN in front for caching and DDoS protection.</p>
+
+<p>What you own: OS and dependency security updates, database backups (and restore drills!), monitoring and alerting, log collection, disk space, scaling. That's the price of "predictable cost, full control".</p>
+
+<h2 id="decide">How to choose</h2>
+
+<figure class="diagram">
+<div class="diagram-scroll">
+<svg viewBox="0 0 780 360" role="img" aria-label="Platform decision tree">
+  <defs><marker id="d1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="ar-fill"/></marker></defs>
+  <g font-size="12.5">
+    <rect x="220" y="10" width="340" height="44" rx="10" class="box-accent"/>
+    <text x="390" y="37" text-anchor="middle" font-weight="700">Long compute / GPUs / always-on processes?</text>
+    <line x1="300" y1="56" x2="120" y2="95" class="ln" marker-end="url(#d1)"/><text x="190" y="72" class="t-mute">yes</text>
+    <line x1="480" y1="56" x2="560" y2="95" class="ln" marker-end="url(#d1)"/><text x="530" y="72" class="t-mute">no</text>
+    <rect x="20" y="98" width="200" height="50" rx="10" class="box-ok"/>
+    <text x="120" y="120" text-anchor="middle" font-weight="700">Self-host / container platform</text>
+    <text x="120" y="138" text-anchor="middle" font-size="11" class="t-soft">VPS + Docker, or Fly, Railway</text>
+
+    <rect x="390" y="98" width="370" height="44" rx="10" class="box-accent"/>
+    <text x="575" y="125" text-anchor="middle" font-weight="700">Heavily relying on Next.js server components / caching?</text>
+    <line x1="460" y1="144" x2="330" y2="185" class="ln" marker-end="url(#d1)"/><text x="380" y="162" class="t-mute">yes</text>
+    <line x1="670" y1="144" x2="670" y2="185" class="ln" marker-end="url(#d1)"/><text x="680" y="168" class="t-mute">no</text>
+    <rect x="230" y="188" width="200" height="50" rx="10" class="box-soft"/>
+    <text x="330" y="210" text-anchor="middle" font-weight="700">Vercel</text>
+    <text x="330" y="228" text-anchor="middle" font-size="11" class="t-soft">most complete, zero config</text>
+
+    <rect x="490" y="188" width="280" height="44" rx="10" class="box-accent"/>
+    <text x="630" y="215" text-anchor="middle" font-weight="700">Realtime / stateful / cost-sensitive / global?</text>
+    <line x1="590" y1="234" x2="520" y2="275" class="ln" marker-end="url(#d1)"/><text x="540" y="252" class="t-mute">yes</text>
+    <line x1="720" y1="234" x2="720" y2="275" class="ln" marker-end="url(#d1)"/><text x="730" y="258" class="t-mute">no</text>
+    <rect x="410" y="278" width="220" height="50" rx="10" class="box-use"/>
+    <text x="520" y="300" text-anchor="middle" font-weight="700">Cloudflare</text>
+    <text x="520" y="318" text-anchor="middle" font-size="11" class="t-soft">Workers + DO + D1/R2</text>
+    <rect x="645" y="278" width="125" height="50" rx="10" class="box-soft"/>
+    <text x="707" y="300" text-anchor="middle" font-weight="700">Either</text>
+    <text x="707" y="318" text-anchor="middle" font-size="11" class="t-soft">pick the fastest to ship</text>
+  </g>
+</svg>
+</div>
+<figcaption>A rough decision tree. In practice also weigh team experience, data compliance and existing infrastructure. For a first launch, "fastest to ship" beats "theoretically optimal".</figcaption>
+</figure>
+
+<div class="callout tip">
+  <span class="callout-title">Three habits that keep you portable</span>
+  <ul>
+    <li>Business logic in plain TS modules; platform-specific code (bindings, Server Actions) only in the adapter layer.</li>
+    <li>Prefer Web-standard APIs (fetch, Request, Response, crypto) and portable storage (Postgres, S3-compatible object storage).</li>
+    <li>Treat platform-specific features (Durable Objects, ISR) as "deliberate lock-in": when you use one, write down why.</li>
+  </ul>
+</div>
+
+<div class="callout project">
+  <span class="callout-title">Where this lands in LinkNote</span>
+  <ul>
+    <li><strong>Vercel edition</strong>: Next.js + Neon Postgres + Vercel's queue / workflow features for summary jobs.</li>
+    <li><strong>Cloudflare edition</strong>: TanStack Start or Hono + D1 + Queues + one Durable Object per user hosting the "Ask my bookmarks" agent.</li>
+    <li><strong>Self-hosted edition</strong>: TanStack Start (Node) + Postgres + BullMQ/Redis, one-command Docker Compose, Caddy for HTTPS.</li>
+  </ul>
+</div>
+
+<div class="callout agent">
+  <span class="callout-title">Tell the agent</span>
+  <div class="compare">
+    <div class="head bad">Vague</div><div class="head good">Precise</div>
+    <div class="bad">"Deploy this to Cloudflare."</div>
+    <div class="good">"The target is Cloudflare Workers. Find every place that assumes a long-running process: module-level mutable state, setInterval/setTimeout background jobs, local file reads/writes, long CPU work. List them with replacements (KV/D1, Cron Triggers, R2, Queues). Give me the list first; change code only after I confirm."</div>
+    <div class="row-sep"></div>
+    <div class="bad">"Add a scheduled cleanup."</div>
+    <div class="good">"Delete drafts older than 7 days daily at 03:00 UTC. We're on Vercel: use platform Cron to call a route protected by a secret (check the Authorization header). Don't use setInterval in code."</div>
+  </div>
+  <p>This chapter's vocabulary: long-running process / serverless / isolate, cold start, instance, binding, cron trigger, preview deployment, rollback, env var / secret, compatibility date, Durable Object, vendor lock-in.</p>
+</div>
+
+<div class="callout interview">
+  <span class="callout-title">Interview corner</span>
+  <ul>
+    <li><strong>Pros and cons of serverless?</strong> Pros: auto-scaling, pay-per-use, no ops. Cons: cold starts, execution limits, statelessness requiring external storage, harder debugging and observability, vendor lock-in.</li>
+    <li><strong>What is edge computing good and bad for?</strong> Good for low-latency request handling, personalization, auth and caching; if the database lives in one region, edge functions making frequent round-trips are actually slower — compute should sit near data.</li>
+  </ul>
+</div>
+
+<h2 id="check">Self-check</h2>
+
+<details class="check">
+  <summary>1. To cache rarely-changing config, code declares <code>let cache: Config | null = null</code> at module top level and loads it from the DB on first request. Is that a bug on serverless?</summary>
+  <div class="answer"><p>Usually not — it's an acceptable optimization: each instance loads once on its first request and reuses it afterwards. The key is that it's a <strong>cache that may be lost or inconsistent</strong>, not the source of truth. Note that after a config change, instances refresh at different times; if changes must apply instantly, add expiry or use KV. Contrast the rate-limit counter in the opening — state that must be shared accurately — which is a bug in memory.</p></div>
+</details>
+
+<details class="check">
+  <summary>2. Your Worker runs in 300 cities, but Postgres is in US-East. A request makes 5 sequential queries. What happens for a user in Tokyo, and how could you improve it?</summary>
+  <div class="answer"><p>The Worker runs in Tokyo but every query crosses the Pacific (~150ms each), so 5 sequential ≈ 750ms — slower than deploying the whole service in US-East. Improvements: fewer round trips (combine queries, parallelize); Hyperdrive for pooling and query caching; Smart Placement so the Worker runs near the database; or move data closer to users (e.g. D1 read replicas).</p></div>
+</details>
+
+<details class="check">
+  <summary>3. Preview deployments connect to the production database. What's the risk?</summary>
+  <div class="answer"><p>Unreviewed PR code (possibly agent-written) operates directly on production data: one bad migration or delete path damages real data. Previews should use a separate database (or a branching database like Neon, creating a data branch per PR) and separate, least-privilege secrets.</p></div>
+</details>
+
+</article></main>
+</body>
+</html>

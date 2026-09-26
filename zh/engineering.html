@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>工程化与质量保障 · Vibe Hero</title>
+<meta name="description" content="验证金字塔：类型检查、Lint、Vitest、Playwright、CI 门禁、Monorepo 与可观测性——为 Agent 生成的代码建一张安全网。">
+<!-- seo -->
+<link rel="canonical" href="https://uxgnod.github.io/vibe-hero/zh/engineering.html">
+<link rel="alternate" hreflang="zh-CN" href="https://uxgnod.github.io/vibe-hero/zh/engineering.html">
+<link rel="alternate" hreflang="en" href="https://uxgnod.github.io/vibe-hero/en/engineering.html">
+<link rel="alternate" hreflang="x-default" href="https://uxgnod.github.io/vibe-hero/en/engineering.html">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Vibe Hero">
+<meta property="og:title" content="工程化与质量保障 · Vibe Hero">
+<meta property="og:description" content="验证金字塔：类型检查、Lint、Vitest、Playwright、CI 门禁、Monorepo 与可观测性——为 Agent 生成的代码建一张安全网。">
+<meta property="og:url" content="https://uxgnod.github.io/vibe-hero/zh/engineering.html">
+<meta property="og:image" content="https://uxgnod.github.io/vibe-hero/assets/og-image.png">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:locale:alternate" content="en_US">
+<meta name="twitter:card" content="summary_large_image">
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "TechArticle", "headline": "工程化与质量保障", "description": "验证金字塔：类型检查、Lint、Vitest、Playwright、CI 门禁、Monorepo 与可观测性——为 Agent 生成的代码建一张安全网。", "inLanguage": "zh-CN", "url": "https://uxgnod.github.io/vibe-hero/zh/engineering.html", "image": "https://uxgnod.github.io/vibe-hero/assets/og-image.png", "dateModified": "2026-09-26", "author": {"@type": "Person", "name": "uxgnod", "url": "https://github.com/uxgnod"}, "isPartOf": {"@type": "WebSite", "name": "Vibe Hero", "url": "https://uxgnod.github.io/vibe-hero/"}}</script>
+<link rel="icon" href="../assets/favicon.svg">
+<link rel="stylesheet" href="../assets/style.css">
+<script>try{var t=localStorage.getItem('vh-theme');if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+<script defer src="../assets/app.js"></script>
+<script defer src="../assets/widgets.js"></script>
+</head>
+<body>
+<main class="content"><article class="doc">
+
+<p class="eyebrow">CHAPTER 10 · 全栈</p>
+<h1>工程化与质量保障</h1>
+<p class="lead">当代码大部分由 Agent 编写，你的核心工作之一就变成了<strong>建立一张自动化的安全网</strong>：让错误在几秒钟内、以明确的方式暴露出来，而不是靠你逐行阅读。这张网同时也是 Agent 的“眼睛”——它靠测试结果知道自己写对了没有。</p>
+<div class="meta"><span>⏱ 约 50 分钟</span><span class="badge use">会用</span>（类型检查、Vitest、Playwright、CI）<span class="badge aware">知道</span>（Monorepo、可观测性工具）</div>
+
+<div class="goals">
+  <div class="goals-title">读完本章，你应该能够：</div>
+  <ul>
+    <li>说出验证金字塔每一层能抓住什么错误、代价是多少。</li>
+    <li>写出一个 Vitest 单元测试和一个 Playwright 端到端测试。</li>
+    <li>配置一个在每个 PR 上运行类型检查、Lint、测试和构建的 CI 流水线。</li>
+    <li>识别 Agent 在测试上的典型“作弊”行为。</li>
+  </ul>
+</div>
+
+<h2 id="question">开场：你不可能读完所有代码</h2>
+
+<div class="callout question">
+  <span class="callout-title">开场问题</span>
+  <p>Agent 一天之内为 LinkNote 提交了 30 次修改，涉及 80 个文件。你认真审查了其中最重要的 5 个。<strong>凭什么相信另外 75 个文件没有把已有功能改坏？</strong></p>
+</div>
+
+<p><strong>答案方向：</strong>你不需要相信 Agent，你需要相信<strong>检查</strong>。把“什么叫做正确”编码成机器可以执行的检查（类型、规则、测试），每次修改都自动运行。然后你的审查重点就从“这 80 个文件对不对”转移到“这些检查是否覆盖了重要的行为”和“这 5 个关键设计决策对不对”。</p>
+
+<h2 id="pyramid">验证金字塔</h2>
+
+<figure class="diagram">
+<div class="diagram-scroll">
+<svg viewBox="0 0 780 330" role="img" aria-label="验证金字塔">
+  <g font-size="12.5">
+    <polygon points="390,20 470,90 310,90" class="box-deep"/>
+    <text x="390" y="75" text-anchor="middle" font-weight="700" font-size="12">人工验收</text>
+    <polygon points="310,95 470,95 530,150 250,150" class="box-purple"/>
+    <text x="390" y="128" text-anchor="middle" font-weight="700">端到端测试 E2E（Playwright）</text>
+    <polygon points="250,155 530,155 590,210 190,210" class="box-accent"/>
+    <text x="390" y="188" text-anchor="middle" font-weight="700">集成测试（API + 真实数据库）</text>
+    <polygon points="190,215 590,215 650,270 130,270" class="box-use"/>
+    <text x="390" y="248" text-anchor="middle" font-weight="700">单元测试（Vitest）</text>
+    <polygon points="130,275 650,275 700,320 80,320" class="box-ok"/>
+    <text x="390" y="303" text-anchor="middle" font-weight="700">静态检查：类型（tsc）+ Lint + 格式化</text>
+  </g>
+  <g font-size="11.5">
+    <text x="20" y="60" class="t-mute">慢 · 贵 · 少</text>
+    <text x="20" y="310" class="t-mute">快 · 便宜 · 多</text>
+    <text x="600" y="60" class="t-soft">预览链接里点一点</text>
+    <text x="545" y="128" class="t-soft">关键用户流程能走通</text>
+    <text x="600" y="188" class="t-soft">SQL、鉴权、接口契约</text>
+    <text x="660" y="248" class="t-soft">纯逻辑、边界条件</text>
+    <text x="712" y="303" class="t-soft">拼写、类型、</text>
+    <text x="712" y="318" class="t-soft">危险写法</text>
+  </g>
+</svg>
+</div>
+<figcaption>越往下，运行越快、越便宜，应该越多；越往上，越接近真实用户，但越慢、越脆弱，只覆盖最关键的流程。</figcaption>
+</figure>
+
+<p>对于 Agent 工作流，最底下两层的价值被放大了：它们在几秒钟内给出结果，Agent 可以在一个循环里反复“修改 → 检查 → 修复”，而不需要你介入。</p>
+
+<h2 id="static">静态检查</h2>
+
+<h3>类型检查</h3>
+<p>第 01、04 章已经强调过：<code>tsc --noEmit</code> 必须零错误，并且在 CI 中强制执行。TypeScript 7 之后，大项目的类型检查也只需要几秒钟。</p>
+
+<h3>Lint 与格式化</h3>
+<p>两种主流组合：</p>
+<ul>
+  <li><strong>Biome</strong>：一个 Rust 写的工具同时负责格式化和 Lint，极快，零配置可用。新项目的好默认值。</li>
+  <li><strong>ESLint（typescript-eslint）+ Prettier</strong>：生态最丰富，尤其是<strong>需要类型信息的规则</strong>（如 <code>no-floating-promises</code> 检测遗漏的 await、<code>no-misused-promises</code>）。</li>
+</ul>
+<p>值得开启的规则都有一个共同点：它们针对的是“能运行但有隐患”的代码——正是 Agent 容易写出、人又容易看漏的那一类。另外，<strong>Knip</strong> 可以找出未使用的文件、导出和依赖，Agent 反复修改后特别容易留下这类垃圾。<span class="badge aware">知道</span></p>
+
+<h2 id="vitest">单元测试：Vitest <span class="badge use">会用</span></h2>
+
+<p>Vitest 是 Vite 生态的测试框架，API 与 Jest 基本相同，原生支持 TS 和 ESM，速度很快。</p>
+
+<script type="text/plain" class="code" data-lang="ts" data-title="src/lib/filter.ts">
+import type { Link } from "@/db/schema";
+
+export function filterLinks(links: Link[], opts: { tag?: string; q?: string }) {
+  const q = opts.q?.trim().toLowerCase();
+  const tag = opts.tag?.toLowerCase();
+  return links.filter((l) =>
+    (!tag || l.tags.some((t) => t.toLowerCase() === tag)) &&
+    (!q || (l.title ?? "").toLowerCase().includes(q) || l.url.toLowerCase().includes(q)),
+  );
+}
+</script>
+
+<script type="text/plain" class="code" data-lang="ts" data-title="src/lib/filter.test.ts">
+import { describe, it, expect } from "vitest";
+import { filterLinks } from "./filter";
+import type { Link } from "@/db/schema";
+
+const make = (over: Partial<Link>): Link => ({
+  id: "1", userId: "u", url: "https://x.dev", title: "X", status: "done",
+  summary: null, tags: [], createdAt: new Date(), ...over,
+});
+
+describe("filterLinks", () => {
+  it("按标签筛选时忽略大小写", () => {
+    const links = [make({ id: "a", tags: ["React"] }), make({ id: "b", tags: ["vue"] })];
+    expect(filterLinks(links, { tag: "react" }).map((l) => l.id)).toEqual(["a"]);
+  });
+
+  it("标题为空时仍能按 URL 搜索", () => {
+    const links = [make({ title: null, url: "https://react.dev" })];
+    expect(filterLinks(links, { q: "react" })).toHaveLength(1);
+  });
+
+  it("没有任何条件时返回全部", () => {
+    expect(filterLinks([make({}), make({})], {})).toHaveLength(2);
+  });
+});
+</script>
+
+<p>好测试的特征：测的是<strong>行为</strong>（输入 → 输出），而不是实现细节；名字就是需求描述；覆盖边界（空值、大小写、空列表）。<code>pnpm vitest</code> 进入监听模式，改代码后自动重跑。</p>
+
+<p>对 React 组件，可以用 Testing Library 按“用户能看到的东西”查询和操作（按角色、按文字），而不是按 CSS 类名。对 Cloudflare Workers，有专门的 Vitest 集成可以在 workerd 运行时里跑测试并模拟绑定。</p>
+
+<h2 id="playwright">端到端测试：Playwright <span class="badge use">会用</span></h2>
+
+<p>Playwright 启动真实的浏览器，像用户一样点击、输入、断言。它覆盖了单元测试覆盖不到的东西：页面之间的跳转、前后端的集成、样式导致的元素不可点击等。</p>
+
+<script type="text/plain" class="code" data-lang="ts" data-title="e2e/add-link.spec.ts">
+import { test, expect } from "@playwright/test";
+
+test("用户添加一个链接后能在列表中看到它", async ({ page }) => {
+  await page.goto("/links");
+  await page.getByLabel("网址").fill("https://playwright.dev");
+  await page.getByRole("button", { name: "保存" }).click();
+
+  const card = page.getByRole("article").filter({ hasText: "playwright.dev" });
+  await expect(card).toBeVisible();
+  await expect(card.getByText("生成中")).toBeVisible();   // 异步摘要的中间状态
+});
+</script>
+
+<p>注意测试是按<strong>角色和标签</strong>定位元素的（<code>getByRole("button", { name: "保存" })</code>）。这不仅让测试更稳定，也顺便检查了第 05 章说的语义化 HTML——如果“按钮”是个 div，这个测试就找不到它。</p>
+
+<p>Playwright 失败时会保存<strong>trace</strong>（每一步的截图、DOM、网络请求），用 <code>pnpm playwright show-trace</code> 打开，是排查 E2E 失败的利器。很多 Coding Agent 也可以通过 Playwright（或浏览器 MCP 工具）直接“看到”页面，做视觉层面的自我检查。</p>
+
+<h2 id="agent-testing">Agent 时代的测试策略</h2>
+
+<ol class="steps">
+  <li><strong>测试就是规格。</strong>对于重要功能，先让 Agent 写测试（或者你写测试的标题列表），确认测试表达了你要的行为，再让它实现。这就是测试驱动开发（TDD），在 Agent 工作流里它的价值比以往更高：测试把模糊的需求变成了可执行的验收标准。</li>
+  <li><strong>警惕“改测试让它通过”。</strong>Agent 在修不好代码时，有时会修改测试的断言、加上 <code>.skip</code>、或者把期望值改成当前的错误输出。审查 diff 时，<strong>对测试文件的修改要格外仔细看</strong>。可以在 AGENTS.md 里写明：“除非我要求，不得修改已有测试的断言”。</li>
+  <li><strong>小心过度 mock。</strong>把数据库、网络全都 mock 掉的测试，测的往往只是 mock 本身。涉及 SQL、鉴权的逻辑，用真实数据库（本地 Docker Postgres、测试用 D1、或 PGlite 这类内存 Postgres）写集成测试更有价值。</li>
+  <li><strong>快照测试少用。</strong>大块的快照很容易被“一键更新”，失去检验意义。</li>
+</ol>
+
+<h2 id="ci">CI：把检查变成门禁 <span class="badge use">会用</span></h2>
+
+<script type="text/plain" class="code" data-lang="text" data-title=".github/workflows/ci.yml">
+name: CI
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4          # 版本取自 package.json 的 packageManager 字段
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm biome ci .
+      - run: pnpm test --run
+      - run: pnpm build
+</script>
+
+<p>然后在 GitHub 仓库设置里开启<strong>分支保护</strong>：主分支只能通过 PR 合并，且 CI 必须通过。这样，不论是你还是 Agent，都无法把没通过检查的代码合进主分支。E2E 测试可以在部署平台生成预览 URL 后，针对预览环境运行。</p>
+
+<h2 id="git">Git 习惯</h2>
+<ul>
+  <li><strong>小步提交</strong>：让 Agent 每完成一个可验证的步骤就提交一次。出问题时，你可以精确地回退到上一个好的状态。</li>
+  <li><strong>一个功能一个分支 / PR</strong>：PR 描述写清楚做了什么、为什么、怎么验证。可以要求 Agent 按模板生成 PR 描述。</li>
+  <li><strong>并行开发</strong>：同时让多个 Agent 处理不同任务时，用 <code>git worktree</code> 为每个任务创建独立的工作目录，避免互相干扰。<span class="badge aware">知道</span></li>
+</ul>
+
+<h2 id="monorepo">Monorepo <span class="badge aware">知道</span></h2>
+
+<p>当项目包含多个应用和共享代码（例如 Web 前端、独立 API、共享的类型与 schema 包），可以用 <strong>pnpm workspaces</strong> 把它们放在一个仓库里，用 <strong>Turborepo</strong> 按依赖关系编排构建、测试并缓存结果。</p>
+
+<script type="text/plain" class="code" data-lang="text">
+linknote/
+├── apps/
+│   ├── web/          # TanStack Start 或 Next.js
+│   └── api/          # Hono 服务
+├── packages/
+│   ├── db/           # Drizzle schema 与查询（被 web 和 api 共享）
+│   └── shared/       # Zod schema、工具函数
+├── pnpm-workspace.yaml
+└── turbo.json
+</script>
+
+<p>不要过早引入。只有一个应用时，普通的单仓库结构就足够了。第一次需要“两个部署单元共享代码”时，再迁移。</p>
+
+<h2 id="observability">可观测性：上线后你怎么知道它坏了 <span class="badge aware">知道</span></h2>
+
+<table>
+  <thead><tr><th>手段</th><th>作用</th><th>工具举例</th></tr></thead>
+  <tbody>
+    <tr><td>结构化日志</td><td>用 JSON 记录事件和上下文（用户 ID、请求 ID），便于检索</td><td>平台日志（Vercel Logs、<code>wrangler tail</code>、Workers Logs）</td></tr>
+    <tr><td>错误追踪</td><td>自动收集前后端异常、堆栈、影响的用户数</td><td>Sentry 等</td></tr>
+    <tr><td>链路追踪</td><td>看一次请求在各服务、数据库、LLM 调用上的耗时</td><td>OpenTelemetry 标准 + 各类后端</td></tr>
+    <tr><td>前端性能</td><td>真实用户的加载速度和交互延迟（LCP、INP、CLS）</td><td>Lighthouse、平台分析工具</td></tr>
+    <tr><td>LLM 可观测性</td><td>记录每次模型调用的输入、输出、token、延迟、成本</td><td>第 11 章</td></tr>
+  </tbody>
+</table>
+
+<div class="callout agent">
+  <span class="callout-title">对 Agent 怎么说：写一份“完成的定义”</span>
+  <p>把下面这样的“完成定义（Definition of Done）”放进 AGENTS.md，每个任务都适用：</p>
+<script type="text/plain" class="code" data-lang="md" data-title="AGENTS.md（节选）">
+## Definition of Done
+- pnpm typecheck、pnpm biome ci .、pnpm test --run 全部通过
+- 新增或修改的行为有对应测试；bug 修复先写一个能复现问题的失败测试
+- 不修改已有测试的断言，除非任务明确要求；如需修改，在总结中单独说明理由
+- 不新增依赖，除非说明理由并得到确认
+- 最后输出：修改的文件列表、验证方式、已知限制
+</script>
+  <div class="compare">
+    <div class="head bad">模糊</div><div class="head good">精确</div>
+    <div class="bad">“修复搜索 bug。”</div>
+    <div class="good">“搜索在标题为空时崩溃。先写一个复现这个问题的失败测试（标题为 null、按 URL 搜索），确认它失败；然后修复；最后运行完整的测试套件。”</div>
+  </div>
+</div>
+
+<div class="callout interview">
+  <span class="callout-title">面试角</span>
+  <ul>
+    <li><strong>单元测试、集成测试、E2E 测试怎么分配？</strong>按金字塔：大量快速的单元测试覆盖逻辑分支；少量集成测试覆盖与数据库、外部服务的契约；极少量 E2E 覆盖核心用户流程（注册、下单等）。</li>
+    <li><strong>如何测试依赖时间或随机数的代码？</strong>把时间和随机源作为参数注入，或使用测试框架的假时钟（<code>vi.useFakeTimers()</code>）。</li>
+    <li><strong>CI 里应该跑什么？</strong>安装（锁文件冻结）→ 类型检查 → Lint → 测试 → 构建；主分支保护；E2E 针对预览环境。</li>
+  </ul>
+</div>
+
+<h2 id="check">自检</h2>
+
+<details class="check">
+  <summary>1. Agent 修复一个 bug 后报告“所有测试通过”。diff 中测试文件有一处修改：<code>expect(result).toBe(3)</code> 改成了 <code>expect(result).toBe(2)</code>。你应该怎么处理？</summary>
+  <div class="answer"><p>先判断哪个值才符合需求。如果 3 是正确的业务结果，那么 Agent 是在“修改测试去迎合错误的实现”，应当回退这处修改并要求修复实现。如果需求确实变了，这个修改是合理的，但应该在总结中被明确说明。无论哪种情况，都不能只看“测试通过”这个结论。</p></div>
+</details>
+
+<details class="check">
+  <summary>2. 一个团队只有 E2E 测试，没有单元测试。每次 CI 需要 25 分钟，而且经常因为网络波动失败。这会对 Agent 工作流造成什么影响？</summary>
+  <div class="answer"><p>Agent 获得反馈的周期变得很长（25 分钟一次），无法快速迭代；不稳定的测试会让 Agent（和人）学会忽略失败，甚至反复重试直到“碰巧通过”。应该把大量逻辑验证下沉到秒级的单元测试和静态检查，E2E 只保留少数核心流程，并修复不稳定的测试。</p></div>
+</details>
+
+</article></main>
+</body>
+</html>

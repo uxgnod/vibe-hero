@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Engineering & Quality · Vibe Hero</title>
+<meta name="description" content="The verification pyramid: type checking, lint, Vitest, Playwright, CI gates, monorepos and observability — a safety net for agent-written code.">
+<!-- seo -->
+<link rel="canonical" href="https://uxgnod.github.io/vibe-hero/en/engineering.html">
+<link rel="alternate" hreflang="zh-CN" href="https://uxgnod.github.io/vibe-hero/zh/engineering.html">
+<link rel="alternate" hreflang="en" href="https://uxgnod.github.io/vibe-hero/en/engineering.html">
+<link rel="alternate" hreflang="x-default" href="https://uxgnod.github.io/vibe-hero/en/engineering.html">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Vibe Hero">
+<meta property="og:title" content="Engineering &amp; Quality · Vibe Hero">
+<meta property="og:description" content="The verification pyramid: type checking, lint, Vitest, Playwright, CI gates, monorepos and observability — a safety net for agent-written code.">
+<meta property="og:url" content="https://uxgnod.github.io/vibe-hero/en/engineering.html">
+<meta property="og:image" content="https://uxgnod.github.io/vibe-hero/assets/og-image.png">
+<meta property="og:locale" content="en_US">
+<meta property="og:locale:alternate" content="zh_CN">
+<meta name="twitter:card" content="summary_large_image">
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "TechArticle", "headline": "Engineering & Quality", "description": "The verification pyramid: type checking, lint, Vitest, Playwright, CI gates, monorepos and observability — a safety net for agent-written code.", "inLanguage": "en", "url": "https://uxgnod.github.io/vibe-hero/en/engineering.html", "image": "https://uxgnod.github.io/vibe-hero/assets/og-image.png", "dateModified": "2026-09-26", "author": {"@type": "Person", "name": "uxgnod", "url": "https://github.com/uxgnod"}, "isPartOf": {"@type": "WebSite", "name": "Vibe Hero", "url": "https://uxgnod.github.io/vibe-hero/"}}</script>
+<link rel="icon" href="../assets/favicon.svg">
+<link rel="stylesheet" href="../assets/style.css">
+<script>try{var t=localStorage.getItem('vh-theme');if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+<script defer src="../assets/app.js"></script>
+<script defer src="../assets/widgets.js"></script>
+</head>
+<body>
+<main class="content"><article class="doc">
+
+<p class="eyebrow">CHAPTER 10 · FULL-STACK</p>
+<h1>Engineering & Quality</h1>
+<p class="lead">When agents write most of the code, one of your core jobs becomes <strong>building an automated safety net</strong>: mistakes surface within seconds, explicitly, instead of depending on you reading every line. The same net is also the agent's "eyes" — test results are how it knows whether it got things right.</p>
+<div class="meta"><span>⏱ ~50 min</span><span class="badge use">Use</span> (type checking, Vitest, Playwright, CI) <span class="badge aware">Aware</span> (monorepos, observability tools)</div>
+
+<div class="goals">
+  <div class="goals-title">By the end of this chapter you should be able to:</div>
+  <ul>
+    <li>Say what each layer of the verification pyramid catches and what it costs.</li>
+    <li>Write a Vitest unit test and a Playwright end-to-end test.</li>
+    <li>Configure a CI pipeline that runs type checks, lint, tests and build on every PR.</li>
+    <li>Recognize typical ways agents "cheat" on tests.</li>
+  </ul>
+</div>
+
+<h2 id="question">Opening: you can't read all the code</h2>
+
+<div class="callout question">
+  <span class="callout-title">Opening question</span>
+  <p>In one day, an agent submitted 30 changes to LinkNote touching 80 files. You carefully reviewed the 5 most important ones. <strong>Why should you believe the other 75 didn't break existing features?</strong></p>
+</div>
+
+<p><strong>Where the answer lies:</strong> you don't need to trust the agent; you need to trust the <strong>checks</strong>. Encode "what correct means" as machine-executable checks (types, rules, tests) that run automatically on every change. Your review focus then shifts from "are these 80 files right?" to "do the checks cover the important behavior?" and "are these 5 key design decisions right?".</p>
+
+<h2 id="pyramid">The verification pyramid</h2>
+
+<figure class="diagram">
+<div class="diagram-scroll">
+<svg viewBox="0 0 780 330" role="img" aria-label="Verification pyramid">
+  <g font-size="12.5">
+    <polygon points="390,20 470,90 310,90" class="box-deep"/>
+    <text x="390" y="75" text-anchor="middle" font-weight="700" font-size="12">Manual QA</text>
+    <polygon points="310,95 470,95 530,150 250,150" class="box-purple"/>
+    <text x="390" y="128" text-anchor="middle" font-weight="700">End-to-end tests (Playwright)</text>
+    <polygon points="250,155 530,155 590,210 190,210" class="box-accent"/>
+    <text x="390" y="188" text-anchor="middle" font-weight="700">Integration tests (API + real DB)</text>
+    <polygon points="190,215 590,215 650,270 130,270" class="box-use"/>
+    <text x="390" y="248" text-anchor="middle" font-weight="700">Unit tests (Vitest)</text>
+    <polygon points="130,275 650,275 700,320 80,320" class="box-ok"/>
+    <text x="390" y="303" text-anchor="middle" font-weight="700">Static checks: types (tsc) + lint + format</text>
+  </g>
+  <g font-size="11.5">
+    <text x="20" y="60" class="t-mute">slow · costly · few</text>
+    <text x="20" y="310" class="t-mute">fast · cheap · many</text>
+    <text x="600" y="60" class="t-soft">click around the preview</text>
+    <text x="545" y="128" class="t-soft">key user flows work</text>
+    <text x="600" y="188" class="t-soft">SQL, auth, API contracts</text>
+    <text x="660" y="248" class="t-soft">pure logic, edges</text>
+    <text x="700" y="303" class="t-soft">typos, types,</text>
+    <text x="700" y="318" class="t-soft">risky patterns</text>
+  </g>
+</svg>
+</div>
+<figcaption>Lower layers are faster and cheaper and should be plentiful; higher layers are closer to real users but slower and more brittle, reserved for the most critical flows.</figcaption>
+</figure>
+
+<p>In an agent workflow, the bottom two layers become even more valuable: they answer within seconds, so the agent can loop "change → check → fix" on its own without you stepping in.</p>
+
+<h2 id="static">Static checks</h2>
+
+<h3>Type checking</h3>
+<p>As stressed in Chapters 01 and 04: <code>tsc --noEmit</code> must report zero errors and be enforced in CI. Since TypeScript 7, even large projects type-check in seconds.</p>
+
+<h3>Lint and formatting</h3>
+<p>Two mainstream setups:</p>
+<ul>
+  <li><strong>Biome</strong>: one Rust tool handling both formatting and lint, extremely fast, works with zero config. A good default for new projects.</li>
+  <li><strong>ESLint (typescript-eslint) + Prettier</strong>: the richest ecosystem, especially <strong>rules that use type information</strong> (e.g. <code>no-floating-promises</code> catching missing awaits, <code>no-misused-promises</code>).</li>
+</ul>
+<p>The rules worth enabling share a trait: they target code that "runs but hides a problem" — exactly what agents tend to write and humans tend to miss. Also, <strong>Knip</strong> finds unused files, exports and dependencies; agents leave plenty of that behind after repeated edits. <span class="badge aware">Aware</span></p>
+
+<h2 id="vitest">Unit tests: Vitest <span class="badge use">Use</span></h2>
+
+<p>Vitest is the Vite ecosystem's test framework: Jest-compatible API, native TS and ESM, fast.</p>
+
+<script type="text/plain" class="code" data-lang="ts" data-title="src/lib/filter.ts">
+import type { Link } from "@/db/schema";
+
+export function filterLinks(links: Link[], opts: { tag?: string; q?: string }) {
+  const q = opts.q?.trim().toLowerCase();
+  const tag = opts.tag?.toLowerCase();
+  return links.filter((l) =>
+    (!tag || l.tags.some((t) => t.toLowerCase() === tag)) &&
+    (!q || (l.title ?? "").toLowerCase().includes(q) || l.url.toLowerCase().includes(q)),
+  );
+}
+</script>
+
+<script type="text/plain" class="code" data-lang="ts" data-title="src/lib/filter.test.ts">
+import { describe, it, expect } from "vitest";
+import { filterLinks } from "./filter";
+import type { Link } from "@/db/schema";
+
+const make = (over: Partial<Link>): Link => ({
+  id: "1", userId: "u", url: "https://x.dev", title: "X", status: "done",
+  summary: null, tags: [], createdAt: new Date(), ...over,
+});
+
+describe("filterLinks", () => {
+  it("ignores case when filtering by tag", () => {
+    const links = [make({ id: "a", tags: ["React"] }), make({ id: "b", tags: ["vue"] })];
+    expect(filterLinks(links, { tag: "react" }).map((l) => l.id)).toEqual(["a"]);
+  });
+
+  it("still matches by URL when the title is null", () => {
+    const links = [make({ title: null, url: "https://react.dev" })];
+    expect(filterLinks(links, { q: "react" })).toHaveLength(1);
+  });
+
+  it("returns everything with no filters", () => {
+    expect(filterLinks([make({}), make({})], {})).toHaveLength(2);
+  });
+});
+</script>
+
+<p>Good tests test <strong>behavior</strong> (input → output), not implementation details; their names read as requirements; they cover edges (nulls, case, empty lists). <code>pnpm vitest</code> starts watch mode and re-runs on changes.</p>
+
+<p>For React components, Testing Library queries and interacts by "what the user can see" (by role, by text) rather than CSS classes. For Cloudflare Workers, a dedicated Vitest integration runs tests inside the workerd runtime with simulated bindings.</p>
+
+<h2 id="playwright">End-to-end tests: Playwright <span class="badge use">Use</span></h2>
+
+<p>Playwright drives a real browser, clicking, typing and asserting like a user. It covers what unit tests can't: navigation between pages, frontend-backend integration, elements made unclickable by styling, and so on.</p>
+
+<script type="text/plain" class="code" data-lang="ts" data-title="e2e/add-link.spec.ts">
+import { test, expect } from "@playwright/test";
+
+test("a user adds a link and sees it in the list", async ({ page }) => {
+  await page.goto("/links");
+  await page.getByLabel("URL").fill("https://playwright.dev");
+  await page.getByRole("button", { name: "Save" }).click();
+
+  const card = page.getByRole("article").filter({ hasText: "playwright.dev" });
+  await expect(card).toBeVisible();
+  await expect(card.getByText("Generating")).toBeVisible();   // the async summary's intermediate state
+});
+</script>
+
+<p>Note the test locates elements by <strong>role and label</strong> (<code>getByRole("button", { name: "Save" })</code>). That makes tests sturdier and also checks the semantic HTML from Chapter 05 — if the "button" is a div, this test won't find it.</p>
+
+<p>When Playwright fails it saves a <strong>trace</strong> (screenshots, DOM and network for every step), opened with <code>pnpm playwright show-trace</code> — the best tool for diagnosing E2E failures. Many coding agents can also "see" pages through Playwright (or a browser MCP tool) to self-check visually.</p>
+
+<h2 id="agent-testing">Testing strategy in the agent era</h2>
+
+<ol class="steps">
+  <li><strong>Tests are the spec.</strong> For important features, have the agent write tests first (or write the list of test names yourself), confirm the tests express the behavior you want, then have it implement. That's test-driven development (TDD), and in agent workflows it's worth more than ever: tests turn a fuzzy requirement into executable acceptance criteria.</li>
+  <li><strong>Watch for "changing the test to make it pass".</strong> When an agent can't fix the code, it sometimes edits assertions, adds <code>.skip</code>, or sets the expected value to the current wrong output. When reviewing diffs, <strong>scrutinize changes to test files</strong>. You can state in AGENTS.md: "Never change existing test assertions unless I ask."</li>
+  <li><strong>Beware over-mocking.</strong> Tests that mock away the database and network often test only the mocks. For SQL and auth logic, integration tests against a real database (local Docker Postgres, a test D1, or an in-memory Postgres like PGlite) are worth more.</li>
+  <li><strong>Go easy on snapshots.</strong> Big snapshots get "updated with one keystroke" and stop verifying anything.</li>
+</ol>
+
+<h2 id="ci">CI: turning checks into gates <span class="badge use">Use</span></h2>
+
+<script type="text/plain" class="code" data-lang="text" data-title=".github/workflows/ci.yml">
+name: CI
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4          # version taken from package.json's packageManager field
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm biome ci .
+      - run: pnpm test --run
+      - run: pnpm build
+</script>
+
+<p>Then enable <strong>branch protection</strong> in the GitHub repo settings: main only accepts merges via PR, and CI must pass. Now neither you nor the agent can merge code that fails the checks. E2E tests can run against the preview URL once the platform creates one.</p>
+
+<h2 id="git">Git habits</h2>
+<ul>
+  <li><strong>Small commits</strong>: have the agent commit after every verifiable step. When something breaks, you can roll back precisely to the last good state.</li>
+  <li><strong>One feature, one branch / PR</strong>: the PR description says what changed, why, and how to verify. You can require the agent to fill in a template.</li>
+  <li><strong>Parallel work</strong>: when running several agents on different tasks, give each task its own directory with <code>git worktree</code> so they don't interfere. <span class="badge aware">Aware</span></li>
+</ul>
+
+<h2 id="monorepo">Monorepos <span class="badge aware">Aware</span></h2>
+
+<p>When a project has several apps and shared code (a web frontend, a standalone API, a shared types/schema package), <strong>pnpm workspaces</strong> keep them in one repo and <strong>Turborepo</strong> orchestrates builds and tests by dependency order with caching.</p>
+
+<script type="text/plain" class="code" data-lang="text">
+linknote/
+├── apps/
+│   ├── web/          # TanStack Start or Next.js
+│   └── api/          # Hono service
+├── packages/
+│   ├── db/           # Drizzle schema and queries (shared by web and api)
+│   └── shared/       # Zod schemas, utilities
+├── pnpm-workspace.yaml
+└── turbo.json
+</script>
+
+<p>Don't introduce it early. With one app, a plain single-package repo is enough. Migrate the first time two deployable units need to share code.</p>
+
+<h2 id="observability">Observability: how do you know it broke in production? <span class="badge aware">Aware</span></h2>
+
+<table>
+  <thead><tr><th>Technique</th><th>Purpose</th><th>Examples</th></tr></thead>
+  <tbody>
+    <tr><td>Structured logs</td><td>Record events with context (user ID, request ID) as JSON for search</td><td>Platform logs (Vercel Logs, <code>wrangler tail</code>, Workers Logs)</td></tr>
+    <tr><td>Error tracking</td><td>Collect frontend and backend exceptions, stacks, affected users</td><td>Sentry and similar</td></tr>
+    <tr><td>Tracing</td><td>See how long a request spends in each service, DB and LLM call</td><td>OpenTelemetry standard + backends</td></tr>
+    <tr><td>Frontend performance</td><td>Real users' load speed and interaction latency (LCP, INP, CLS)</td><td>Lighthouse, platform analytics</td></tr>
+    <tr><td>LLM observability</td><td>Record each model call's input, output, tokens, latency, cost</td><td>Chapter 11</td></tr>
+  </tbody>
+</table>
+
+<div class="callout agent">
+  <span class="callout-title">Tell the agent: write a "Definition of Done"</span>
+  <p>Put a Definition of Done like this in AGENTS.md; it applies to every task:</p>
+<script type="text/plain" class="code" data-lang="md" data-title="AGENTS.md (excerpt)">
+## Definition of Done
+- pnpm typecheck, pnpm biome ci ., pnpm test --run all pass
+- New or changed behavior has tests; for bug fixes, first write a failing test that reproduces the bug
+- Don't change existing test assertions unless the task says so; if you must, explain why separately in the summary
+- No new dependencies without a stated reason and my confirmation
+- Finish with: list of changed files, how it was verified, known limitations
+</script>
+  <div class="compare">
+    <div class="head bad">Vague</div><div class="head good">Precise</div>
+    <div class="bad">"Fix the search bug."</div>
+    <div class="good">"Search crashes when a title is null. First write a failing test that reproduces it (null title, search by URL) and confirm it fails; then fix it; then run the full test suite."</div>
+  </div>
+</div>
+
+<div class="callout interview">
+  <span class="callout-title">Interview corner</span>
+  <ul>
+    <li><strong>How do you balance unit, integration and E2E tests?</strong> Follow the pyramid: lots of fast unit tests for logic branches; a few integration tests for contracts with databases and external services; very few E2E tests for core user flows (sign-up, checkout).</li>
+    <li><strong>How do you test code that depends on time or randomness?</strong> Inject time and randomness as parameters, or use the framework's fake timers (<code>vi.useFakeTimers()</code>).</li>
+    <li><strong>What should CI run?</strong> Install (frozen lockfile) → type check → lint → tests → build; protect main; run E2E against previews.</li>
+  </ul>
+</div>
+
+<h2 id="check">Self-check</h2>
+
+<details class="check">
+  <summary>1. After fixing a bug, the agent reports "all tests pass". The diff contains one test change: <code>expect(result).toBe(3)</code> became <code>expect(result).toBe(2)</code>. What do you do?</summary>
+  <div class="answer"><p>First decide which value matches the requirement. If 3 is the correct business result, the agent "changed the test to fit the wrong implementation" — revert that change and require a fix to the implementation. If the requirement genuinely changed, the edit is legitimate but should be called out explicitly in the summary. Either way, "tests pass" alone isn't enough.</p></div>
+</details>
+
+<details class="check">
+  <summary>2. A team has only E2E tests, no unit tests. CI takes 25 minutes and often fails from network flakiness. How does that hurt an agent workflow?</summary>
+  <div class="answer"><p>The agent's feedback loop becomes very long (25 minutes per round), so it can't iterate quickly; flaky tests teach agents (and humans) to ignore failures or retry until they "happen to pass". Push most logic verification down into second-level unit tests and static checks, keep E2E for a handful of core flows, and fix the flaky ones.</p></div>
+</details>
+
+</article></main>
+</body>
+</html>

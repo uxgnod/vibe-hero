@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>System Design & Interviews · Vibe Hero</title>
+<meta name="description" content="A system design framework for full-stack AI apps: requirements, estimation, architecture, deep dives, trade-offs; LinkNote as the example, plus common interview questions with answer outlines.">
+<!-- seo -->
+<link rel="canonical" href="https://uxgnod.github.io/vibe-hero/en/system-design.html">
+<link rel="alternate" hreflang="zh-CN" href="https://uxgnod.github.io/vibe-hero/zh/system-design.html">
+<link rel="alternate" hreflang="en" href="https://uxgnod.github.io/vibe-hero/en/system-design.html">
+<link rel="alternate" hreflang="x-default" href="https://uxgnod.github.io/vibe-hero/en/system-design.html">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Vibe Hero">
+<meta property="og:title" content="System Design &amp; Interviews · Vibe Hero">
+<meta property="og:description" content="A system design framework for full-stack AI apps: requirements, estimation, architecture, deep dives, trade-offs; LinkNote as the example, plus common interview questions with answer outlines.">
+<meta property="og:url" content="https://uxgnod.github.io/vibe-hero/en/system-design.html">
+<meta property="og:image" content="https://uxgnod.github.io/vibe-hero/assets/og-image.png">
+<meta property="og:locale" content="en_US">
+<meta property="og:locale:alternate" content="zh_CN">
+<meta name="twitter:card" content="summary_large_image">
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "TechArticle", "headline": "System Design & Interviews", "description": "A system design framework for full-stack AI apps: requirements, estimation, architecture, deep dives, trade-offs; LinkNote as the example, plus common interview questions with answer outlines.", "inLanguage": "en", "url": "https://uxgnod.github.io/vibe-hero/en/system-design.html", "image": "https://uxgnod.github.io/vibe-hero/assets/og-image.png", "dateModified": "2026-09-26", "author": {"@type": "Person", "name": "uxgnod", "url": "https://github.com/uxgnod"}, "isPartOf": {"@type": "WebSite", "name": "Vibe Hero", "url": "https://uxgnod.github.io/vibe-hero/"}}</script>
+<link rel="icon" href="../assets/favicon.svg">
+<link rel="stylesheet" href="../assets/style.css">
+<script>try{var t=localStorage.getItem('vh-theme');if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+<script defer src="../assets/app.js"></script>
+<script defer src="../assets/widgets.js"></script>
+</head>
+<body>
+<main class="content"><article class="doc">
+
+<p class="eyebrow">CHAPTER 14 · MASTERY</p>
+<h1>System Design & Interviews</h1>
+<p class="lead">System design isn't reciting model answers; it's a <strong>structured way of thinking</strong>: start from requirements and orders of magnitude, derive an architecture, and state clearly what each choice costs. Interviews test this skill, and day to day it decides whether you can review the designs agents propose.</p>
+<div class="meta"><span>⏱ ~60 min</span><span class="badge deep">Deep</span> (estimation and trade-offs) <span class="badge use">Use</span> (design framework and answer templates)</div>
+
+<div class="goals">
+  <div class="goals-title">By the end of this chapter you should be able to:</div>
+  <ul>
+    <li>Run a system design with a five-step framework and control the pace of the discussion.</li>
+    <li>Estimate orders of magnitude — especially token costs of AI features — and find the design pressure from them.</li>
+    <li>Design LinkNote for a million users and dive into dedupe, queues, rate limiting, search and realtime updates.</li>
+    <li>Answer common TS full-stack and AI interview questions with outline frameworks.</li>
+  </ul>
+</div>
+
+<h2 id="question">Opening: design LinkNote for a million users</h2>
+
+<div class="callout question">
+  <span class="callout-title">Opening question</span>
+  <p>The interviewer says: "Design a bookmarking service with AI summaries for one million registered users." You have 45 minutes. <strong>What should your first sentence be? And what will turn out to be the biggest design pressure in this system?</strong></p>
+</div>
+
+<p><strong>Where the answer lies:</strong> your first sentence should be a <strong>question</strong>, not a box diagram: what are the core features? What's the read/write ratio? How fast must summaries appear? Then do a rough estimate. The estimate reveals a counter-intuitive conclusion: in this system, <strong>the biggest pressure isn't the database; it's LLM cost</strong> — and the most effective fix is deduplicating by URL (many people save the same popular articles). The whole design unfolds around that discovery.</p>
+
+<h2 id="framework">A five-step framework</h2>
+
+<ol class="steps">
+  <li><strong>Clarify requirements (5 min)</strong>: functional (what it does) + non-functional (scale, latency, availability, consistency, cost, security). Say what's out of scope.</li>
+  <li><strong>Estimate (5 min)</strong>: users → requests (QPS) → storage → bandwidth → <em>AI cost</em>. Orders of magnitude only.</li>
+  <li><strong>High-level architecture (10 min)</strong>: draw the main components and data flow; get the whole thing working first.</li>
+  <li><strong>Deep dives (15 min)</strong>: pick 2–3 of the hardest parts: data model, bottlenecks, failure handling.</li>
+  <li><strong>Trade-offs and evolution (5 min)</strong>: state the main trade-offs and what you'd change first at 10× scale.</li>
+</ol>
+
+<p>The same framework works for reviewing an agent's design: did it clarify requirements? Did it estimate? Are its "key points" really the key points?</p>
+
+<h2 id="requirements">Step 1: clarify requirements</h2>
+
+<div class="two-col">
+  <div class="card"><h4>Functional</h4><p>• Save links; auto-generate summaries and tags<br>• List, filter by tag, full-text and semantic search<br>• "Ask my bookmarks" chat<br>• <em>Out of scope</em>: social sharing, collaboration, browser extension (this time)</p></div>
+  <div class="card"><h4>Non-functional</h4><p>• 1M registered users, ~10% daily active<br>• Save returns within 1s; summary within 30s is fine<br>• List page P95 &lt; 300ms<br>• Strict per-user data isolation; brief summary delay acceptable (eventual consistency)</p></div>
+</div>
+
+<h2 id="estimate">Step 2: estimate <span class="badge deep">Deep</span></h2>
+
+<table>
+  <thead><tr><th>Metric</th><th>Calculation</th><th>Result</th></tr></thead>
+  <tbody>
+    <tr><td>Daily active users</td><td>1M × 10%</td><td>100k</td></tr>
+    <tr><td>Writes (saving links)</td><td>100k × 3/day = 300k/day ÷ 86,400</td><td>~3.5/s average, ~35/s at a 10× peak</td></tr>
+    <tr><td>Reads (list, search)</td><td>100k × 20/day = 2M/day</td><td>~23/s average, ~230/s peak</td></tr>
+    <tr><td>Storage</td><td>~2KB per row (with summary) × 300k/day × 365</td><td>~220 GB/year (excluding page snapshots)</td></tr>
+    <tr><td><strong>LLM input</strong></td><td>300k × ~3,000 tokens (cleaned text)</td><td><strong>~900M tokens/day</strong></td></tr>
+    <tr><td><strong>LLM output</strong></td><td>300k × ~300 tokens</td><td><strong>~90M tokens/day</strong></td></tr>
+  </tbody>
+</table>
+
+<p>At an example mid-tier price ($2 per million input tokens, $10 per million output): input ≈ $1,800/day, output ≈ $900/day — <strong>about $2,700 a day, roughly $80k a month</strong>. By comparison, a few dozen database reads and writes per second are no pressure for any decent Postgres.</p>
+
+<div class="callout tip">
+  <span class="callout-title">What estimation buys you</span>
+  <p>Estimates needn't be precise; their job is to <strong>find where the design pressure is</strong>. Here the conclusion is: the database is an "ordinary" problem; LLM cost is the "core" one. That decides the deep-dive focus — summary dedupe, input cleaning, model choice, batching. Without the estimate, you might spend 15 minutes on database sharding, which isn't the bottleneck at all.</p>
+</div>
+
+<h2 id="architecture">Step 3: high-level architecture</h2>
+
+<figure class="diagram">
+<div class="diagram-scroll">
+<svg viewBox="0 0 780 420" role="img" aria-label="LinkNote at scale">
+  <defs><marker id="sd1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="ar-fill"/></marker>
+  <marker id="sd2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="ar-deep"/></marker></defs>
+  <g font-size="12">
+    <rect x="15" y="170" width="110" height="60" rx="10" class="box-soft"/><text x="70" y="196" text-anchor="middle" font-weight="700">Clients</text><text x="70" y="214" text-anchor="middle" font-size="10.5" class="t-soft">web / ext / MCP</text>
+    <rect x="150" y="170" width="100" height="60" rx="10" class="box-soft"/><text x="200" y="196" text-anchor="middle" font-weight="700">CDN</text><text x="200" y="214" text-anchor="middle" font-size="10.5" class="t-soft">static assets</text>
+    <rect x="275" y="140" width="150" height="120" rx="10" class="box-accent"/>
+    <text x="350" y="166" text-anchor="middle" font-weight="700">App service</text>
+    <text x="350" y="186" text-anchor="middle" font-size="10.5" class="t-soft">SSR pages + API</text>
+    <text x="350" y="204" text-anchor="middle" font-size="10.5" class="t-soft">auth · validation · limits</text>
+    <text x="350" y="222" text-anchor="middle" font-size="10.5" class="t-soft">stateless, scales out</text>
+    <text x="350" y="240" text-anchor="middle" font-size="10.5" class="t-soft">SSE status pushes</text>
+
+    <rect x="470" y="20" width="140" height="56" rx="10" class="box-ok"/><text x="540" y="44" text-anchor="middle" font-weight="700">Postgres</text><text x="540" y="62" text-anchor="middle" font-size="10.5" class="t-soft">replicas · pgvector</text>
+    <rect x="630" y="20" width="135" height="56" rx="10" class="box-ok"/><text x="697" y="44" text-anchor="middle" font-weight="700">Redis / KV</text><text x="697" y="62" text-anchor="middle" font-size="10.5" class="t-soft">cache · rate counters</text>
+    <rect x="470" y="170" width="140" height="60" rx="10" class="box-purple"/><text x="540" y="196" text-anchor="middle" font-weight="700">Job queue</text><text x="540" y="214" text-anchor="middle" font-size="10.5" class="t-soft">retries · dead letters</text>
+    <rect x="470" y="300" width="140" height="80" rx="10" class="box-use"/><text x="540" y="326" text-anchor="middle" font-weight="700">Summary worker</text><text x="540" y="344" text-anchor="middle" font-size="10.5" class="t-soft">fetch → clean → cache?</text><text x="540" y="360" text-anchor="middle" font-size="10.5" class="t-soft">→ LLM → embed → write</text>
+    <rect x="645" y="170" width="120" height="60" rx="10" class="box-deep"/><text x="705" y="196" text-anchor="middle" font-weight="700">Summary cache</text><text x="705" y="214" text-anchor="middle" font-size="10.5" class="t-soft">dedupe by URL</text>
+    <rect x="645" y="300" width="120" height="80" rx="10" class="box-deep"/><text x="705" y="326" text-anchor="middle" font-weight="700">LLM gateway</text><text x="705" y="344" text-anchor="middle" font-size="10.5" class="t-soft">limits · failover</text><text x="705" y="360" text-anchor="middle" font-size="10.5" class="t-soft">usage logging</text>
+    <rect x="275" y="330" width="150" height="50" rx="10" class="box-soft"/><text x="350" y="352" text-anchor="middle" font-weight="700">Object storage</text><text x="350" y="368" text-anchor="middle" font-size="10.5" class="t-soft">page snapshots</text>
+  </g>
+  <line x1="125" y1="200" x2="147" y2="200" class="ln" marker-end="url(#sd1)"/>
+  <line x1="250" y1="200" x2="272" y2="200" class="ln" marker-end="url(#sd1)"/>
+  <line x1="425" y1="165" x2="468" y2="60" class="ln" marker-end="url(#sd1)"/>
+  <line x1="425" y1="150" x2="628" y2="55" class="ln ln-dash" marker-end="url(#sd1)"/>
+  <line x1="425" y1="200" x2="467" y2="200" class="ln" marker-end="url(#sd1)"/>
+  <line x1="540" y1="232" x2="540" y2="297" class="ln" marker-end="url(#sd1)"/>
+  <line x1="610" y1="325" x2="642" y2="215" class="ln-deep" marker-end="url(#sd2)"/>
+  <line x1="610" y1="345" x2="642" y2="345" class="ln-deep" marker-end="url(#sd2)"/>
+  <line x1="470" y1="340" x2="428" y2="355" class="ln" marker-end="url(#sd1)"/>
+  <path d="M500 298 C 470 250, 470 110, 510 78" class="ln ln-dash" marker-end="url(#sd1)"/>
+  <text x="390" y="410" text-anchor="middle" font-size="12" class="t-soft">Write path: the app only writes a pending row and enqueues a job (&lt;1s); all slow work happens asynchronously in workers.</text>
+</svg>
+</div>
+<figcaption>LinkNote at scale. The red parts are designed around the core pressure: LLM cost.</figcaption>
+</figure>
+
+<p>This diagram maps onto any of Chapter 09's deployment paths: on Cloudflare, the app service is a Worker, the queue is Queues, the cache is KV, rate limiting can use Durable Objects; on Vercel, the app is Functions and the DB and Redis come from the Marketplace; self-hosted, they're Docker containers. <strong>The shape of the architecture doesn't depend on the platform</strong>; the platform only decides what implements each box.</p>
+
+<h2 id="deep-dive">Step 4: deep dives</h2>
+
+<h3>① Summary dedupe: a content-addressed cache</h3>
+<p><strong>Normalize</strong> the URL (lowercase host, strip tracking params like <code>utm_*</code>, drop fragments, unify trailing slashes) and hash it as the key. Summaries live in a user-independent <code>page_summaries</code> table; a user's bookmark just references it. Popular articles get summarized once. If 60% of saves hit the cache, LLM cost drops straight to 40%.</p>
+<p>Details to discuss: how long the cache lives (pages change); how to avoid generating 100 times when 100 people save the same URL simultaneously (lock or dedupe by URL hash in the job layer, a.k.a. "request coalescing"); how personalization (a user wanting English summaries) becomes part of the cache key.</p>
+
+<h3>② Queues and failure handling</h3>
+<ul>
+  <li><strong>At-least-once delivery + idempotent consumers</strong>: queues may redeliver; workers check by link id and status whether it's done, and write with upserts.</li>
+  <li><strong>Retry policy</strong>: exponential backoff for network errors and LLM 429s; no retries for 404 pages or empty content — mark failed immediately.</li>
+  <li><strong>Dead-letter queue (DLQ)</strong>: jobs that fail repeatedly go to a DLQ for investigation instead of burning money on endless retries.</li>
+  <li><strong>Backpressure</strong>: LLM providers rate-limit. Worker concurrency should be capped and the queue absorbs peaks.</li>
+</ul>
+
+<h3>③ Rate limiting and abuse</h3>
+<p>Free users get at most N saves per day and M chat messages per minute. Implement with a token bucket or sliding window, with counters in Redis / KV or a per-user Durable Object. For AI features, limit <strong>cost</strong> (tokens), not just request counts.</p>
+
+<h3>④ Search</h3>
+<p>Two needs: keyword search ("react compiler") and semantic search ("how to make components render less"). Postgres can do both: a full-text index for keywords, pgvector for vector similarity, with results fused (hybrid retrieval). Every query must filter by <code>user_id</code> — easy to forget in vector search, leading to cross-user data leaks. As data keeps growing, consider a dedicated search service.</p>
+
+<h3>⑤ Realtime status updates</h3>
+<table>
+  <thead><tr><th>Option</th><th>How</th><th>Fits</th></tr></thead>
+  <tbody>
+    <tr><td>Polling</td><td>Client asks for status every few seconds</td><td>Simplest; plenty for a "within 30s" summary</td></tr>
+    <tr><td>SSE</td><td>One-way server push over plain HTTP</td><td>Status notifications, LLM streaming</td></tr>
+    <tr><td>WebSocket</td><td>Two-way, long-lived connection</td><td>Chat, collaborative editing; on serverless needs Durable Objects or a dedicated service</td></tr>
+  </tbody>
+</table>
+<p>In an interview, saying "polling first, because the requirement allows it; switch to SSE if X happens" shows more judgment than jumping straight to WebSockets.</p>
+
+<h2 id="tradeoffs">Step 5: trade-offs and evolution</h2>
+
+<table>
+  <thead><tr><th>Decision</th><th>Choice</th><th>Cost / when it changes</th></tr></thead>
+  <tbody>
+    <tr><td>Monolith vs microservices</td><td>Monolith + separate workers</td><td>Split when teams or deploy cadences clearly diverge</td></tr>
+    <tr><td>SQL vs NoSQL</td><td>Postgres</td><td>Clear relations, transactions, flexible queries; writes are nowhere near a bottleneck</td></tr>
+    <tr><td>Sync vs async summaries</td><td>Async</td><td>Users see a "generating" state; in exchange, stable write latency and retryability</td></tr>
+    <tr><td>Summary consistency</td><td>Eventual</td><td>Seconds to tens of seconds of delay is acceptable</td></tr>
+    <tr><td>Model choice</td><td>Tiered by task: a cost-effective config for summaries, a stronger one for chat</td><td>Needs an eval set to guard quality; can vary by user tier</td></tr>
+  </tbody>
+</table>
+
+<p><strong>At 10× scale</strong>: LLM cost is still pressure #1 → more aggressive caching, batch APIs, model tiering; DB read load → read replicas, list caching; search → a dedicated service; multi-region → distribute data by region, considering compliance.</p>
+
+<h2 id="ai-design">Issues specific to AI system design</h2>
+
+<ul>
+  <li><strong>Cost model</strong>: per-call cost × call volume for each feature, written into the design doc. Set budget alerts.</li>
+  <li><strong>Latency budget</strong>: LLM calls on the synchronous path should stream; keep them off the synchronous path unless necessary.</li>
+  <li><strong>Degradation and failover</strong>: when the model provider is down or rate-limiting, switch to a backup model, queue, or show "summary temporarily unavailable"?</li>
+  <li><strong>Quality</strong>: eval sets, production sampling, user feedback (thumbs up/down) flowing back into evals.</li>
+  <li><strong>Security</strong>: prompt injection (fetched pages), cross-user isolation (filter at retrieval), output escaping.</li>
+  <li><strong>Data and privacy</strong>: which user data goes to third-party models? Is consent needed? How long is it kept?</li>
+</ul>
+
+<h2 id="questions">Common interview questions and answer outlines</h2>
+
+<p>Grouped by area. Expand to see the key points — note they're <strong>outlines</strong>; in a real answer, bring in your own experience and examples.</p>
+
+<h3>JavaScript / TypeScript</h3>
+
+<details class="check"><summary>What is the event loop? Tasks vs microtasks?</summary><div class="answer"><p>JS runs on one thread; after sync code finishes, drain the microtask queue (Promise callbacks, code after await), then take one task (timers, I/O, events). Microtasks are fully drained after every task, so Promise callbacks always run before setTimeout. Give and trace an output-order example (Chapter 03).</p></div></details>
+
+<details class="check"><summary>Promise.all vs allSettled vs race vs any, and when to use each?</summary><div class="answer"><p>all: succeeds only if all succeed, fails fast; allSettled: waits for all, reports each; race: first to settle decides; any: first to succeed decides. Use allSettled when batches may partially fail, and mention concurrency limits.</p></div></details>
+
+<details class="check"><summary>Do TypeScript types exist at runtime? What follows from that?</summary><div class="answer"><p>No, they're erased. So: external data must be validated at runtime (Zod); `as` checks nothing; you can't branch on types at runtime — use a discriminant field.</p></div></details>
+
+<details class="check"><summary>interface vs type? any vs unknown vs never?</summary><div class="answer"><p>interface supports declaration merging and describes objects only; type can express unions, tuples, mapped types, etc. any disables checking; unknown must be narrowed before use; never is an impossible value, used for exhaustiveness checks.</p></div></details>
+
+<details class="check"><summary>What's a closure? What problem can it cause in React?</summary><div class="answer"><p>A function captures variables from the scope where it was created. In React each render's state is a snapshot; callbacks or effects that captured an old render's values produce "stale closures" — e.g. a timer that always reads the old count. Fixes: functional updates, correct dependency arrays, useEffectEvent / refs.</p></div></details>
+
+<h3>React / frontend</h3>
+
+<details class="check"><summary>How does React rendering work? What causes a re-render?</summary><div class="answer"><p>setState → schedule an update → re-run component functions (render) → diff old and new element trees (reconciliation) → apply DOM changes (commit). Triggers: own state change, parent re-render, consumed Context change.</p></div></details>
+
+<details class="check"><summary>When is useEffect appropriate? Common misuses?</summary><div class="answer"><p>Syncing with external systems: subscriptions, WebSockets, browser APIs. Misuses: computing derived data, responding to user events, hand-rolled data fetching, resetting state from props. Unstable references in the dependency array cause loops.</p></div></details>
+
+<details class="check"><summary>What are SSR, SSG, CSR and RSC? How do you choose?</summary><div class="answer"><p>Compare on "where rendered, when rendered, how much JS shipped"; RSC is about whether a component exists only on the server, complementary to SSR. Choose per page: static content SSG, personalized live data SSR/streaming, highly interactive dashboards CSR; discuss hydration cost and caching.</p></div></details>
+
+<details class="check"><summary>How would you speed up a page with a slow first load?</summary><div class="answer"><p>Measure first (LCP, network waterfall, JS size), then treat the cause: server rendering / streaming; code splitting and lazy loading; fewer client components; parallelize data fetching to avoid waterfalls; image optimization; CDN caching. Emphasize "measure first, then optimize".</p></div></details>
+
+<h3>Full-stack / backend</h3>
+
+<details class="check"><summary>How do you achieve end-to-end type safety?</summary><div class="answer"><p>DB schema (Drizzle) infers row types → service return types inferred → server functions / tRPC / Hono RPC carry types to the client; inputs use Zod schemas for both validation and types. Limit: covers only code in the same compilation; external boundaries still need runtime validation.</p></div></details>
+
+<details class="check"><summary>Sessions vs JWTs? Where should tokens be stored?</summary><div class="answer"><p>Sessions: server keeps state, client holds an ID, easy to revoke; JWTs: self-contained, stateless verification, but hard to revoke early and larger. In browsers, prefer HttpOnly + Secure + SameSite cookies over localStorage; discuss XSS and CSRF defenses.</p></div></details>
+
+<details class="check"><summary>Serverless vs container deployment? What suits each?</summary><div class="answer"><p>Differences in lifecycle, state, cold start, execution time, billing (Chapter 09's table). Serverless suits request handling with variable traffic; containers suit long jobs, WebSockets, heavy compute; discuss the DB connection problem.</p></div></details>
+
+<h3>AI / agents</h3>
+
+<details class="check"><summary>How do you get stable structured data from an LLM?</summary><div class="answer"><p>Structured output / constrained decoding + Zod validation + retry or degrade on failure; examples in the prompt; simplify the task; an eval set for regression testing.</p></div></details>
+
+<details class="check"><summary>Walk through RAG. When don't you need it?</summary><div class="answer"><p>Chunk → embed → store → embed the query → retrieve top-k → generate with citations; optionally hybrid retrieval and reranking. With little data, put it all in context + caching; agentic retrieval (a search tool) is another option.</p></div></details>
+
+<details class="check"><summary>What is an agent? How do you design a reliable one?</summary><div class="answer"><p>A model using tools in a loop until a goal is reached. Reliability: step and budget caps, least-privilege tools, human confirmation for sensitive actions, sandboxing, context management, observability, eval sets. First check whether a fixed workflow would do.</p></div></details>
+
+<details class="check"><summary>What is prompt injection? How do you defend against it?</summary><div class="answer"><p>Instructions smuggled in data hijack the model. Defense in depth: no dangerous tools when processing untrusted content; identity and permissions decided by the server; confirmation for risky actions; output escaping; isolation and auditing. Admit no perfect defense exists; the focus is limiting blast radius.</p></div></details>
+
+<details class="check"><summary>How do you reduce the cost of an LLM app?</summary><div class="answer"><p>Measure token usage per feature first; clean input; prompt caching; result caching and dedupe; match model and reasoning effort to the task; batching; cap output length and agent steps; confirm with evals that quality holds.</p></div></details>
+
+<h2 id="check">Self-check: a small design exercise</h2>
+
+<details class="check">
+  <summary>Design a "weekly digest email" for LinkNote: every Monday, email each active user a summary of what they saved last week. Give estimates, architecture points and the biggest risks.</summary>
+  <div class="answer">
+    <p><strong>Estimate</strong>: 100k active users, ~20 bookmarks each last week, ~200 tokens per summary → ~4,000 input tokens per email, ~400M input tokens per week. Use a batch API to cut cost since it doesn't need to be realtime.</p>
+    <p><strong>Architecture</strong>: a cron job early Monday enqueues users in batches → a worker reads that user's existing summaries (reused, no re-fetching pages) → calls the LLM to write the digest → sends via an email service → records send status (idempotent: one email per user per week).</p>
+    <p><strong>Risks</strong>: duplicate sends after batch failures (needs an idempotency key); deliverability and unsubscribe compliance; cost spikes (budget caps); injection content in a user's bookmarks (give digest generation no tools, escape output).</p>
+  </div>
+</details>
+
+</article></main>
+</body>
+</html>

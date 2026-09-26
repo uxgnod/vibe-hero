@@ -1,0 +1,366 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The TypeScript Type System · Vibe Hero</title>
+<meta name="description" content="Structural typing, unions and narrowing, discriminated unions, generics, utility types, type erasure and boundary validation with Zod.">
+<!-- seo -->
+<link rel="canonical" href="https://uxgnod.github.io/vibe-hero/en/typescript.html">
+<link rel="alternate" hreflang="zh-CN" href="https://uxgnod.github.io/vibe-hero/zh/typescript.html">
+<link rel="alternate" hreflang="en" href="https://uxgnod.github.io/vibe-hero/en/typescript.html">
+<link rel="alternate" hreflang="x-default" href="https://uxgnod.github.io/vibe-hero/en/typescript.html">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Vibe Hero">
+<meta property="og:title" content="The TypeScript Type System · Vibe Hero">
+<meta property="og:description" content="Structural typing, unions and narrowing, discriminated unions, generics, utility types, type erasure and boundary validation with Zod.">
+<meta property="og:url" content="https://uxgnod.github.io/vibe-hero/en/typescript.html">
+<meta property="og:image" content="https://uxgnod.github.io/vibe-hero/assets/og-image.png">
+<meta property="og:locale" content="en_US">
+<meta property="og:locale:alternate" content="zh_CN">
+<meta name="twitter:card" content="summary_large_image">
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "TechArticle", "headline": "The TypeScript Type System", "description": "Structural typing, unions and narrowing, discriminated unions, generics, utility types, type erasure and boundary validation with Zod.", "inLanguage": "en", "url": "https://uxgnod.github.io/vibe-hero/en/typescript.html", "image": "https://uxgnod.github.io/vibe-hero/assets/og-image.png", "dateModified": "2026-09-26", "author": {"@type": "Person", "name": "uxgnod", "url": "https://github.com/uxgnod"}, "isPartOf": {"@type": "WebSite", "name": "Vibe Hero", "url": "https://uxgnod.github.io/vibe-hero/"}}</script>
+<link rel="icon" href="../assets/favicon.svg">
+<link rel="stylesheet" href="../assets/style.css">
+<script>try{var t=localStorage.getItem('vh-theme');if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+<script defer src="../assets/app.js"></script>
+<script defer src="../assets/widgets.js"></script>
+</head>
+<body>
+<main class="content"><article class="doc">
+
+<p class="eyebrow">CHAPTER 04 · LANGUAGE</p>
+<h1>The TypeScript Type System</h1>
+<p class="lead">Coming from Java or C#, TS types look familiar, but the underlying philosophy differs: they describe <strong>the shape of data</strong>, not class lineage; and they exist <strong>only while you write code</strong>, leaving no trace at runtime. Grasp those two points and you know what types can and cannot protect you from.</p>
+<div class="meta"><span>⏱ ~60 min</span><span class="badge deep">Deep</span><span>Utility types are <span class="badge use">Use</span></span></div>
+
+<div class="goals">
+  <div class="goals-title">By the end of this chapter you should be able to:</div>
+  <ul>
+    <li>Explain structural typing vs Java's nominal typing, and predict whether an assignment is legal.</li>
+    <li>Model multi-state data with a discriminated union and write an exhaustiveness check.</li>
+    <li>Explain why API responses, forms and LLM output must be validated at runtime, and use Zod so types and validation share one source.</li>
+    <li>Spot dangerous "escape hatches" in review: <code>any</code>, <code>as</code>, <code>!</code>, <code>@ts-ignore</code>.</li>
+  </ul>
+</div>
+
+<h2 id="question">Opening: all green, still crashed in production</h2>
+
+<div class="callout question">
+  <span class="callout-title">Opening question</span>
+  <p>LinkNote passes <code>tsc</code> with zero errors. One day production reports <code>TypeError: Cannot read properties of undefined (reading 'length')</code> at <code>link.tags.length</code>. The <code>Link</code> type clearly says <code>tags: string[]</code> — it can't be undefined. <strong>Why didn't the type system catch it?</strong></p>
+</div>
+
+<p><strong>Where the answer lies:</strong> that record came from an external API, and the code says <code>const link = await res.json() as Link</code>. <code>as</code> means "compiler, trust me". The compiler did — but the actual runtime data had no <code>tags</code> field. <strong>TS types are your declaration of the data's shape. The compiler checks your code against the declaration; it never checks real data against the declaration.</strong> So every piece of data entering from outside the program must be validated once at runtime.</p>
+
+<h2 id="structural">Structural typing: shape, not ancestry</h2>
+
+<p>In Java, compatibility depends on declarations: <code>class Dog implements Animal</code> lets a Dog be used as an Animal. That's <strong>nominal typing</strong>. TypeScript uses <strong>structural typing</strong>: if the shape fits, it's compatible, no declaration needed.</p>
+
+<script type="text/plain" class="code" data-lang="ts">
+type HasUrl = { url: string };
+
+function open(x: HasUrl) { /* ... */ }
+
+const link = { url: "https://a.dev", title: "A", tags: ["x"] };
+open(link);          // ✓ legal: link has at least url: string; extra fields don't matter
+
+class Bookmark { constructor(public url: string) {} }
+open(new Bookmark("https://b.dev"));   // ✓ also legal: Bookmark never declared HasUrl
+</script>
+
+<p>It's a lot like Go's interfaces (implicit implementation), just extended to every type, plain objects included.</p>
+
+<div class="callout warn">
+  <span class="callout-title">A side effect of structural typing</span>
+  <p>Two types with the same shape are interchangeable even if they mean completely different things: <code>type UserId = string</code> and <code>type LinkId = string</code> are the same thing to the compiler, so passing a user ID where a link ID is expected won't error. When you need to distinguish them, use the "branded type" trick: <code>type LinkId = string &amp; { __brand: "LinkId" }</code>. <span class="badge aware">Aware</span></p>
+</div>
+
+<h2 id="basics">Building blocks</h2>
+
+<table>
+  <thead><tr><th>Syntax</th><th>Meaning</th></tr></thead>
+  <tbody>
+    <tr><td><code>string</code>, <code>number</code>, <code>boolean</code></td><td>Primitives (JS has one number type: 64-bit float)</td></tr>
+    <tr><td><code>string[]</code> or <code>Array&lt;string&gt;</code></td><td>Array</td></tr>
+    <tr><td><code>[string, number]</code></td><td>Tuple: fixed length, fixed type per slot</td></tr>
+    <tr><td><code>{ url: string; title?: string }</code></td><td>Object type; <code>?</code> means optional (may be undefined)</td></tr>
+    <tr><td><code>readonly string[]</code></td><td>Read-only (compile-time only)</td></tr>
+    <tr><td><code>"pending" | "done"</code></td><td>Union of literal types: only one of these two strings</td></tr>
+    <tr><td><code>string | null</code></td><td>Union: a string, or null</td></tr>
+    <tr><td><code>A &amp; B</code></td><td>Intersection: has all fields of both A and B</td></tr>
+    <tr><td><code>unknown</code></td><td>"I don't know what this is"; must be narrowed before use — safe</td></tr>
+    <tr><td><code>any</code></td><td>"Turn off type checking" — dangerous, spreads like a virus</td></tr>
+    <tr><td><code>never</code></td><td>A value that can't exist (used for exhaustiveness checks)</td></tr>
+  </tbody>
+</table>
+
+<p><strong><code>type</code> or <code>interface</code>?</strong> For describing object shapes they're almost interchangeable. <code>interface</code> can be re-declared and merged automatically and sometimes gives friendlier errors; <code>type</code> can express anything, including unions and tuples. In practice: <strong>pick one as a team convention</strong>. Many projects default to <code>type</code> and use <code>interface</code> for public object shapes meant to be extended. It's style, not correctness.</p>
+
+<h2 id="narrowing">Unions and narrowing <span class="badge deep">Deep</span></h2>
+
+<p>Union types are TS's most expressive feature and where it differs most from Java's type system. If a value's type is <code>string | null</code>, you can't call <code>.length</code> directly — you must first prove it isn't null. That proof is called <strong>narrowing</strong>: the compiler follows your <code>if</code>, <code>return</code>, <code>typeof</code>, <code>in</code> checks and gives the same variable different types at different points in the code.</p>
+
+<script type="text/plain" class="code" data-lang="ts">
+function len(x: string | null) {
+  if (x === null) return 0;   // after this line, x is string
+  return x.length;
+}
+function show(v: string | number) {
+  if (typeof v === "number") return v.toFixed(2);  // here v: number
+  return v.toUpperCase();                           // here v: string
+}
+</script>
+
+<h3>Discriminated unions: modeling multi-state data</h3>
+
+<p>Each LinkNote bookmark has a status: pending, done or failed. Each status has different fields: only done has a summary, only failed has an error. A Java programmer's first instinct is usually one big class with every field nullable:</p>
+
+<script type="text/plain" class="code" data-lang="ts">
+// ✗ "Bag of optional fields": permits meaningless combinations
+type BookmarkBad = {
+  status: string;
+  url: string;
+  summary?: string;   // only when done… right? The compiler has no idea
+  error?: string;     // both summary AND error? The compiler allows it too
+};
+</script>
+
+<p>The discriminated-union approach: <strong>one shape per state, told apart by a shared literal field (the discriminant)</strong>. Illegal states simply can't be represented:</p>
+
+<div data-widget="narrowing"></div>
+
+<p>This pattern is everywhere in TS: request state (loading / success / error), LLM streaming message parts (text / tool-call / tool-result), Redux actions, event types… Whenever you see a <code>type: "..."</code> or <code>kind: "..."</code> field, think of it.</p>
+
+<h3>Exhaustiveness checks: let the compiler tell you what you missed</h3>
+
+<script type="text/plain" class="code" data-lang="ts">
+function icon(b: Bookmark): string {
+  switch (b.status) {
+    case "pending": return "⏳";
+    case "done":    return "✓";
+    case "failed":  return "✗";
+    default: {
+      const _exhaustive: never = b;   // if a status is missing, this line becomes a type error
+      return _exhaustive;
+    }
+  }
+}
+</script>
+
+<p>If someone later adds a fourth status <code>archived</code> to <code>Bookmark</code>, every <code>switch</code> that forgot it fails to compile. This is the type system at its most valuable: <strong>turning "changed it here, forgot it there" bugs into compile errors</strong>. When agents make sweeping changes, that protection matters more than ever.</p>
+
+<h2 id="inference">Type inference: write fewer types, in the right places</h2>
+
+<p>TS inference is strong. Most local variables need no annotation. A practical rule:</p>
+<ul>
+  <li><strong>Always annotate:</strong> function parameters; return types of exported public functions (as a contract); entry points of external data.</li>
+  <li><strong>Let it infer:</strong> local variables, callback parameters, return values of simple functions.</li>
+</ul>
+
+<p>Two keywords that help inference:</p>
+
+<script type="text/plain" class="code" data-lang="ts">
+// as const: infer the narrowest literal types, read-only
+const STATUSES = ["pending", "done", "failed"] as const;
+type Status = (typeof STATUSES)[number];   // "pending" | "done" | "failed"
+
+// satisfies: check a value against a type while keeping the more precise inferred type
+const routes = {
+  home: "/",
+  link: "/links/:id",
+} satisfies Record<string, string>;
+routes.link;   // type is exactly "/links/:id", and a misspelled key is an error
+</script>
+
+<p>The <code>typeof STATUSES</code> line shows an important habit: <strong>derive types from a single source of truth</strong> instead of writing them by hand in two places that can drift apart.</p>
+
+<h2 id="generics">Generics</h2>
+
+<p>Generics let a function or type stay general over "some type to be decided" while keeping type information. Same concept as Java generics, but in TS they're used heavily for inference:</p>
+
+<script type="text/plain" class="code" data-lang="ts">
+function first<T>(arr: readonly T[]): T | undefined {
+  return arr[0];
+}
+const a = first([1, 2, 3]);        // a: number | undefined (T inferred as number)
+const b = first(["x", "y"]);       // b: string | undefined
+
+// Constraint: T must have at least an id field
+function byId<T extends { id: string }>(items: T[], id: string): T | undefined {
+  return items.find((it) => it.id === id);
+}
+</script>
+
+<div class="callout warn">
+  <span class="callout-title">A very common "generic lie"</span>
+<script type="text/plain" class="code" data-lang="ts">
+async function getJson<T>(url: string): Promise<T> {
+  const res = await fetch(url);
+  return res.json();          // res.json() is typed any, silently returned as T
+}
+const link = await getJson<Link>("/api/links/1");   // looks type-safe; nothing was validated
+</script>
+  <p>This is the same thing as the opening's <code>as Link</code>: a type parameter is just your declaration. Agents love writing functions like this. The right approach is to pass a <em>validator</em> in (next section).</p>
+</div>
+
+<h2 id="utility">Utility types: deriving new types from existing ones <span class="badge use">Use</span></h2>
+
+<table>
+  <thead><tr><th>Utility</th><th>Effect</th><th>LinkNote example</th></tr></thead>
+  <tbody>
+    <tr><td><code>Partial&lt;T&gt;</code></td><td>Make every field optional</td><td>Body of an update endpoint</td></tr>
+    <tr><td><code>Pick&lt;T, K&gt;</code> / <code>Omit&lt;T, K&gt;</code></td><td>Keep / drop some fields</td><td><code>Omit&lt;Link, "id" | "createdAt"&gt;</code> as create input</td></tr>
+    <tr><td><code>Record&lt;K, V&gt;</code></td><td>Object with keys K and values V</td><td><code>Record&lt;Status, string&gt;</code> status → label</td></tr>
+    <tr><td><code>ReturnType&lt;F&gt;</code> / <code>Awaited&lt;P&gt;</code></td><td>A function's return type / unwrap a Promise</td><td>Derive data types from query functions</td></tr>
+    <tr><td><code>keyof T</code> / <code>T[K]</code></td><td>Union of keys / type of a field</td><td><code>Link["tags"]</code></td></tr>
+  </tbody>
+</table>
+
+<p>You'll see much fancier "type gymnastics" in library declarations (conditional, mapped and template literal types). <span class="badge aware">Aware</span> Knowing they exist is enough: reading the errors matters more than writing them. Hand complex type-writing to the agent, but require type tests or usage examples.</p>
+
+<h2 id="erasure">Type erasure and boundary validation <span class="badge deep">Deep</span></h2>
+
+<p>Back to the opening question. Since types don't exist at runtime, data in your program falls into two categories:</p>
+
+<figure class="diagram">
+<div class="diagram-scroll">
+<svg viewBox="0 0 780 290" role="img" aria-label="Trust boundary: external data is validated by Zod before entering the typed interior">
+  <defs><marker id="t1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="ar-deep"/></marker>
+  <marker id="t2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="ar-ok"/></marker></defs>
+  <text x="120" y="24" text-anchor="middle" font-weight="700" font-size="14" class="t-deep">Outside world (types untrusted)</text>
+  <g font-size="12.5">
+    <rect x="20" y="40" width="200" height="30" rx="6" class="box-bad"/><text x="120" y="60" text-anchor="middle">HTTP bodies / URL params</text>
+    <rect x="20" y="78" width="200" height="30" rx="6" class="box-bad"/><text x="120" y="98" text-anchor="middle">Third-party API responses</text>
+    <rect x="20" y="116" width="200" height="30" rx="6" class="box-bad"/><text x="120" y="136" text-anchor="middle">LLM output (structured JSON)</text>
+    <rect x="20" y="154" width="200" height="30" rx="6" class="box-bad"/><text x="120" y="174" text-anchor="middle">Forms / localStorage</text>
+    <rect x="20" y="192" width="200" height="30" rx="6" class="box-bad"/><text x="120" y="212" text-anchor="middle">Env vars / DB JSON columns</text>
+  </g>
+  <rect x="300" y="60" width="150" height="150" rx="12" class="box-use"/>
+  <text x="375" y="110" text-anchor="middle" font-weight="700" font-size="15">schema.parse()</text>
+  <text x="375" y="132" text-anchor="middle" font-size="12" class="t-soft">runtime validation</text>
+  <text x="375" y="152" text-anchor="middle" font-size="12" class="t-soft">fail → clear error</text>
+  <text x="375" y="172" text-anchor="middle" font-size="12" class="t-soft">pass → typed value</text>
+  <line x1="224" y1="130" x2="296" y2="130" class="ln-deep" marker-end="url(#t1)"/>
+  <line x1="454" y1="130" x2="526" y2="130" class="ln-ok" marker-end="url(#t2)"/>
+  <rect x="530" y="40" width="230" height="180" rx="12" class="box-ok"/>
+  <text x="645" y="70" text-anchor="middle" font-weight="700" font-size="14" class="t-ok">Program interior (types trusted)</text>
+  <text x="645" y="100" text-anchor="middle" font-size="12.5">business logic, components, utils</text>
+  <text x="645" y="124" text-anchor="middle" font-size="12.5">only handle validated data</text>
+  <text x="645" y="148" text-anchor="middle" font-size="12.5">can rely on tsc</text>
+  <text x="645" y="190" text-anchor="middle" font-size="11.5" class="t-mute">no defensive checks scattered inside</text>
+  <text x="390" y="262" text-anchor="middle" font-size="12.5" class="t-soft">Rule: validate once at the boundary, trust types inside. Not the reverse — defensive checks everywhere inside, `as` at the boundary.</text>
+</svg>
+</div>
+<figcaption>The trust boundary. "Outside" means any data not produced by the current TypeScript compilation.</figcaption>
+</figure>
+
+<h3>Zod: define once, get both a validator and a type</h3>
+
+<p>Zod is the de facto standard for runtime validation in TS (Valibot and ArkType are alternatives; most implement the shared Standard Schema interface, so frameworks accept them generically). Its core value: <strong>you write one schema and the TypeScript type is derived from it</strong>, so the two can never disagree.</p>
+
+<script type="text/plain" class="code" data-lang="ts" data-title="src/lib/schema.ts">
+import { z } from "zod";
+
+export const BookmarkSchema = z.discriminatedUnion("status", [
+  z.object({ status: z.literal("pending"), url: z.url() }),
+  z.object({ status: z.literal("done"), url: z.url(), summary: z.string(), tags: z.array(z.string()) }),
+  z.object({ status: z.literal("failed"), url: z.url(), error: z.string() }),
+]);
+
+// Derive the type from the schema: no second hand-written copy
+export type Bookmark = z.infer<typeof BookmarkSchema>;
+
+// Use it at the boundary
+const res = await fetch("/api/links/1");
+const parsed = BookmarkSchema.safeParse(await res.json());
+if (!parsed.success) {
+  console.error(parsed.error.issues);     // exactly which field failed and why
+} else {
+  const bookmark = parsed.data;           // typed as Bookmark, and actually checked
+}
+</script>
+
+<p>You'll see the same Zod schema reused in many places: form validation, API input validation, env var validation, DB result validation — and, very importantly, <strong>constraining LLM structured output</strong> (Chapter 11).</p>
+
+<h2 id="escape-hatches">Escape hatches: when they're OK and when they're red flags</h2>
+
+<table>
+  <thead><tr><th>Syntax</th><th>Meaning</th><th>Review guidance</th></tr></thead>
+  <tbody>
+    <tr><td><code>any</code></td><td>Turns off all checks on the value, and infects everything that touches it</td><td>🚩 Almost always should become <code>unknown</code> + narrowing or validation</td></tr>
+    <tr><td><code>x as T</code></td><td>Type assertion: "trust me, it's T"</td><td>🚩 Especially dangerous on external data; acceptable in a few cases like DOM elements</td></tr>
+    <tr><td><code>x!</code></td><td>Non-null assertion: "trust me, it's not null"</td><td>⚠️ Ask why it can't be null; usually replaceable with an explicit check</td></tr>
+    <tr><td><code>// @ts-ignore</code></td><td>Ignore any error on the next line</td><td>🚩 Not allowed; if truly needed, use <code>@ts-expect-error</code> with a comment explaining why</td></tr>
+    <tr><td><code>as unknown as T</code></td><td>Double assertion, force any type into any other</td><td>🚩 Basically admitting the model is wrong</td></tr>
+  </tbody>
+</table>
+
+<div class="callout tip">
+  <span class="callout-title">Let machines enforce the review rules</span>
+  <p>These rules can be enforced by lint (typescript-eslint's <code>no-explicit-any</code>, <code>no-non-null-assertion</code>; Biome has equivalents) and written into AGENTS.md. Humans and agents both take shortcuts "to make the error go away"; machine checks don't go soft.</p>
+</div>
+
+<h2 id="enums">About enum</h2>
+
+<p>People from Java/C# naturally reach for <code>enum</code>. In modern TS, prefer <strong>unions of string literals</strong> or <code>as const</code> objects: they're pure types that erase cleanly (Node's type stripping doesn't support <code>enum</code>, because enums generate runtime code), and they map naturally onto string values in JSON and databases.</p>
+
+<script type="text/plain" class="code" data-lang="ts">
+// Preferred
+type Status = "pending" | "done" | "failed";
+// When you need to iterate at runtime
+const Status = { Pending: "pending", Done: "done", Failed: "failed" } as const;
+type StatusValue = (typeof Status)[keyof typeof Status];
+</script>
+
+<h2 id="errors">Reading type errors</h2>
+
+<p>TS errors can run to dozens of lines. Three tips:</p>
+<ol class="steps">
+  <li><strong>Read from the bottom up.</strong> The last line is usually the most specific mismatch ("property X is missing in type Y").</li>
+  <li><strong>Hover both sides.</strong> Look at the "expected" type and the "actual" type separately; the difference is the answer.</li>
+  <li><strong>Ask the agent to explain, not to fix.</strong> First ask "what inconsistency in my data model does this error reveal?"; once you understand, decide whether to change the type or the code. Saying "fix this error" often gets you an <code>as</code>.</li>
+</ol>
+
+<div class="callout agent">
+  <span class="callout-title">Tell the agent</span>
+  <div class="compare">
+    <div class="head bad">Vague</div><div class="head good">Precise</div>
+    <div class="bad">"Add a status field to bookmarks."</div>
+    <div class="good">"Model Bookmark as a discriminated union on <code>status</code>: pending (url), done (url, summary, tags), failed (url, error). Define it as a Zod schema and export the type via <code>z.infer</code>. Add exhaustiveness checks to every switch. Don't use optional fields for state-dependent data."</div>
+    <div class="row-sep"></div>
+    <div class="bad">"Fix these type errors."</div>
+    <div class="good">"Fix the type errors under these constraints: no any, no as, no non-null assertions, no @ts-ignore. If an error means the data model itself is wrong, stop and explain it to me before proposing a change."</div>
+  </div>
+</div>
+
+<div class="callout interview">
+  <span class="callout-title">Interview corner</span>
+  <ul>
+    <li><strong>any vs unknown?</strong> Both accept anything. any turns checking off and can be used freely; unknown must be narrowed before use. External data should be unknown.</li>
+    <li><strong>What's structural typing, and how does it differ from Java?</strong> Compatibility by shape, not declared relationships; give an example of a class assignable to an interface it never declared.</li>
+    <li><strong>Why does a TS project still need Zod?</strong> Type erasure: no type information at runtime, so external data must be validated at the boundary. Zod makes the schema the single source of truth with types derived from it.</li>
+    <li><strong>What's a discriminated union and what problem does it solve?</strong> A shared literal field distinguishes several shapes, making illegal states unrepresentable and enabling automatic narrowing via control-flow analysis.</li>
+  </ul>
+</div>
+
+<h2 id="check">Self-check</h2>
+
+<details class="check">
+  <summary>1. <code>type A = { id: string }</code>, <code>const x = { id: "1", extra: true }</code>. Is <code>const a: A = x</code> legal? What about <code>const b: A = { id: "1", extra: true }</code>?</summary>
+  <div class="answer"><p>The first is legal: structural typing only requires "at least" id. The second errors: when an object literal is assigned directly to a typed variable, TS performs an extra "excess property check", because that usually means a typo. This special check only applies to "fresh" object literals.</p></div>
+</details>
+
+<details class="check">
+  <summary>2. An LLM returns JSON and you do <code>JSON.parse(text) as Summary</code>. Name at least two runtime problems the type system can't catch.</summary>
+  <div class="answer"><p>Missing fields (the model forgot tags); wrong field types (tags as a comma-separated string instead of an array); unknown extra fields; enum values out of range (status "completed"). Use <code>SummarySchema.safeParse</code> and retry or degrade on failure.</p></div>
+</details>
+
+<details class="check">
+  <summary>3. You add <code>{ status: "archived"; url: string }</code> to Bookmark. What happens in a codebase with exhaustiveness checks vs one without?</summary>
+  <div class="answer"><p>With them: every switch missing archived fails to compile, listing exactly what to update. Without: everything compiles, archived bookmarks fall into a default branch or get treated as some error state, and the bug surfaces only when a user hits it.</p></div>
+</details>
+
+</article></main>
+</body>
+</html>

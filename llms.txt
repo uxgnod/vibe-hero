@@ -1,0 +1,48 @@
+# Vibe Hero · TypeScript 全栈 AI 开发转型指南
+
+> A free, bilingual (简体中文 / English) guide for experienced developers from Java, Go, Python, C#, C++ and other languages who are new to TypeScript and the frontend. It builds the mental models, precise vocabulary and judgment needed to direct coding agents (Claude Code, Codex, Cursor, etc.) through full-stack AI development. 16 chapters with interactive diagrams, one running project (LinkNote), written against the September 2026 ecosystem (TypeScript 7, Node 24/26, React 19, Next.js 16, TanStack Start, Vite 8, AI SDK 6).
+
+Each chapter exists in both languages with the same slug; the English and Chinese versions are equivalent.
+
+## English chapters
+
+- [00 · Orientation: A Paradigm Shift](https://uxgnod.github.io/vibe-hero/en/index.html): Moving from another language into TypeScript full-stack AI development: what actually changes, how deep to go, and in what order.
+- [01 · The Ecosystem Map](https://uxgnod.github.io/vibe-hero/en/landscape.html): A layered map of the TypeScript ecosystem: language, type checking, transpiling, bundling, runtimes, package managers, frameworks, platforms — and the three mainstream stacks of 2026.
+- [02 · Setup & Your First Project](https://uxgnod.github.io/vibe-hero/en/setup.html): A reproducible TypeScript environment: Node version management, pnpm, the editor, tsconfig, environment variables and your first project.
+- [03 · The JavaScript Runtime Model](https://uxgnod.github.io/vibe-hero/en/javascript.html): Single thread, the event loop, Promises, async/await, closures, references and modules: the parts of JavaScript you must understand deeply.
+- [04 · The TypeScript Type System](https://uxgnod.github.io/vibe-hero/en/typescript.html): Structural typing, unions and narrowing, discriminated unions, generics, utility types, type erasure and boundary validation with Zod.
+- [05 · Web Platform Fundamentals](https://uxgnod.github.io/vibe-hero/en/web.html): From typing a URL to an interactive page: HTTP, cookies and auth, same-origin policy and CORS, caching, the DOM, CSS layout, Tailwind and shadcn/ui.
+- [06 · Thinking in React](https://uxgnod.github.io/vibe-hero/en/react.html): UI = f(state): components, state, re-render rules, using effects correctly, data fetching, form Actions and choosing where state lives.
+- [07 · Rendering & Meta-Frameworks](https://uxgnod.github.io/vibe-hero/en/rendering.html): CSR, SSR, SSG, streaming, hydration, React Server Components, and the structure and trade-offs of Next.js and TanStack Start.
+- [08 · Backend, Data & End-to-End Types](https://uxgnod.github.io/vibe-hero/en/backend.html): Three shapes of a TS backend, Hono, layering, Drizzle and database connections, validation and errors, authentication vs authorization, background jobs and end-to-end type safety.
+- [09 · Three Deployment Paths](https://uxgnod.github.io/vibe-hero/en/deploy.html): Long-running processes, on-demand function instances and V8 isolates; how Vercel, Cloudflare and self-hosting work, their limits, and how to choose.
+- [10 · Engineering & Quality](https://uxgnod.github.io/vibe-hero/en/engineering.html): The verification pyramid: type checking, lint, Vitest, Playwright, CI gates, monorepos and observability — a safety net for agent-written code.
+- [11 · Building AI Applications](https://uxgnod.github.io/vibe-hero/en/ai-apps.html): The mental model of LLM APIs, streaming, structured output, tool calling, RAG, prompting, cost and latency, evals and security.
+- [12 · Agents & Harnesses](https://uxgnod.github.io/vibe-hero/en/agents.html): An agent is a model plus tools in a loop; the harness is everything around the model: prompts, tools, context management, permissions, hooks, feedback. MCP, skills, subagents and building agents in TS.
+- [13 · Driving Coding Agents](https://uxgnod.github.io/vibe-hero/en/workflow.html): Explore, spec, plan, implement, verify, review: describe requirements in precise vocabulary, control the pace, and review agent designs and code.
+- [14 · System Design & Interviews](https://uxgnod.github.io/vibe-hero/en/system-design.html): A system design framework for full-stack AI apps: requirements, estimation, architecture, deep dives, trade-offs; LinkNote as the example, plus common interview questions with answer outlines.
+- [15 · Glossary & Study Plan](https://uxgnod.github.io/vibe-hero/en/glossary.html): A glossary of terms, an 8-week study plan, a self-assessment checklist and an index of official resources.
+
+## 中文章节
+
+- [00 · 导读：一次范式转换](https://uxgnod.github.io/vibe-hero/zh/index.html): 从其他语言转型到 TypeScript 全栈 AI 开发：先弄清楚变的是什么、要学到多深、按什么顺序学。
+- [01 · 生态全景地图](https://uxgnod.github.io/vibe-hero/zh/landscape.html): TypeScript 生态的分层地图：语言、类型检查、转译、打包、运行时、包管理、框架与平台，以及 2026 年的三条主流技术路线。
+- [02 · 环境搭建与第一个项目](https://uxgnod.github.io/vibe-hero/zh/setup.html): 可复现的 TypeScript 开发环境：Node 版本管理、pnpm、编辑器、tsconfig、环境变量与第一个项目。
+- [03 · JavaScript 运行时心智模型](https://uxgnod.github.io/vibe-hero/zh/javascript.html): 单线程、事件循环、Promise、async/await、闭包、引用与模块：JavaScript 必须懂原理的部分。
+- [04 · TypeScript 类型系统](https://uxgnod.github.io/vibe-hero/zh/typescript.html): 结构化类型、联合与收窄、判别联合、泛型、工具类型、类型擦除与边界校验（Zod）。
+- [05 · Web 平台基础](https://uxgnod.github.io/vibe-hero/zh/web.html): 从输入网址到页面可交互：HTTP、Cookie 与鉴权、同源策略与 CORS、缓存、DOM、CSS 布局、Tailwind 与 shadcn/ui。
+- [06 · React 心智模型](https://uxgnod.github.io/vibe-hero/zh/react.html): UI = f(state)：组件、状态、重渲染规则、Effect 的正确用法、数据获取、表单 Actions 与状态管理选择。
+- [07 · 渲染模式与元框架](https://uxgnod.github.io/vibe-hero/zh/rendering.html): CSR、SSR、SSG、流式渲染、水合、React Server Components，以及 Next.js 与 TanStack Start 的结构与取舍。
+- [08 · 后端、数据与端到端类型](https://uxgnod.github.io/vibe-hero/zh/backend.html): TS 后端的三种形态、Hono、分层、Drizzle 与数据库连接、校验与错误、认证与授权、后台任务，以及端到端类型安全。
+- [09 · 部署三条路线](https://uxgnod.github.io/vibe-hero/zh/deploy.html): 常驻进程、按需函数与 isolate 三种运行时形状；Vercel、Cloudflare、自托管的部署方式、限制与选择方法。
+- [10 · 工程化与质量保障](https://uxgnod.github.io/vibe-hero/zh/engineering.html): 验证金字塔：类型检查、Lint、Vitest、Playwright、CI 门禁、Monorepo 与可观测性——为 Agent 生成的代码建一张安全网。
+- [11 · AI 应用开发](https://uxgnod.github.io/vibe-hero/zh/ai-apps.html): LLM API 的心智模型、流式输出、结构化输出、工具调用、RAG、提示词、成本与延迟、评估与安全。
+- [12 · Agent 与 Harness](https://uxgnod.github.io/vibe-hero/zh/agents.html): Agent 就是循环中的模型加工具；Harness 是模型之外的一切：提示、工具、上下文管理、权限、钩子、反馈。MCP、Skills、子 Agent 与 TS 中构建 Agent 的方案。
+- [13 · 驾驭 Coding Agent](https://uxgnod.github.io/vibe-hero/zh/workflow.html): 探索、规格、计划、实现、验证、审查：用精确的词汇描述需求，掌控节奏，审查 Agent 的设计与代码。
+- [14 · 系统设计与面试](https://uxgnod.github.io/vibe-hero/zh/system-design.html): 全栈 AI 应用的系统设计框架：需求、估算、架构、深入、权衡；以 LinkNote 为例，附高频面试题与答题要点。
+- [15 · 术语表与学习计划](https://uxgnod.github.io/vibe-hero/zh/glossary.html): 中英术语对照表、8 周学习计划、能力自查清单与官方资源索引。
+
+## Optional
+
+- [Source repository](https://github.com/uxgnod/vibe-hero): plain HTML/CSS/JS, no build step
+- [Sitemap](https://uxgnod.github.io/vibe-hero/sitemap.xml)

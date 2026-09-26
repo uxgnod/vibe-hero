@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Glossary & Study Plan · Vibe Hero</title>
+<meta name="description" content="A glossary of terms, an 8-week study plan, a self-assessment checklist and an index of official resources.">
+<!-- seo -->
+<link rel="canonical" href="https://uxgnod.github.io/vibe-hero/en/glossary.html">
+<link rel="alternate" hreflang="zh-CN" href="https://uxgnod.github.io/vibe-hero/zh/glossary.html">
+<link rel="alternate" hreflang="en" href="https://uxgnod.github.io/vibe-hero/en/glossary.html">
+<link rel="alternate" hreflang="x-default" href="https://uxgnod.github.io/vibe-hero/en/glossary.html">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Vibe Hero">
+<meta property="og:title" content="Glossary &amp; Study Plan · Vibe Hero">
+<meta property="og:description" content="A glossary of terms, an 8-week study plan, a self-assessment checklist and an index of official resources.">
+<meta property="og:url" content="https://uxgnod.github.io/vibe-hero/en/glossary.html">
+<meta property="og:image" content="https://uxgnod.github.io/vibe-hero/assets/og-image.png">
+<meta property="og:locale" content="en_US">
+<meta property="og:locale:alternate" content="zh_CN">
+<meta name="twitter:card" content="summary_large_image">
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "TechArticle", "headline": "Glossary & Study Plan", "description": "A glossary of terms, an 8-week study plan, a self-assessment checklist and an index of official resources.", "inLanguage": "en", "url": "https://uxgnod.github.io/vibe-hero/en/glossary.html", "image": "https://uxgnod.github.io/vibe-hero/assets/og-image.png", "dateModified": "2026-09-26", "author": {"@type": "Person", "name": "uxgnod", "url": "https://github.com/uxgnod"}, "isPartOf": {"@type": "WebSite", "name": "Vibe Hero", "url": "https://uxgnod.github.io/vibe-hero/"}}</script>
+<link rel="icon" href="../assets/favicon.svg">
+<link rel="stylesheet" href="../assets/style.css">
+<script>try{var t=localStorage.getItem('vh-theme');if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+<script defer src="../assets/app.js"></script>
+<script defer src="../assets/widgets.js"></script>
+</head>
+<body>
+<main class="content"><article class="doc">
+
+<p class="eyebrow">CHAPTER 15 · APPENDIX</p>
+<h1>Glossary & Study Plan</h1>
+<p class="lead">This chapter is a toolbox: a glossary to look things up any time, an 8-week plan that ties the guide together, and a checklist to test whether you've really got it.</p>
+<div class="meta"><span>Reference</span></div>
+
+<h2 id="glossary">Glossary</h2>
+
+<p>Grouped by area. The "Ch." column points to where each term is first explained in detail. The Chinese column is there if you work with Chinese-speaking teammates or read the Chinese edition.</p>
+
+<h3>Language and runtime</h3>
+<table>
+  <thead><tr><th>Term</th><th>One-line meaning</th><th>Ch.</th><th>中文</th></tr></thead>
+  <tbody>
+    <tr><td>Runtime</td><td>An environment that executes JS and provides host APIs: browsers, Node, Bun, Deno, workerd</td><td>01</td><td>运行时</td></tr>
+    <tr><td>Type erasure</td><td>TS types exist only at compile time and vanish at runtime</td><td>01 / 04</td><td>类型擦除</td></tr>
+    <tr><td>Type stripping</td><td>Transpiling by deleting annotations without type-checking (built into Node)</td><td>01</td><td>类型剥离</td></tr>
+    <tr><td>Bundler</td><td>Merges, tree-shakes, splits and minifies code: Vite / Rolldown, Turbopack</td><td>01</td><td>打包器</td></tr>
+    <tr><td>Tree shaking</td><td>Removing exported code that's never used</td><td>01</td><td>摇树</td></tr>
+    <tr><td>Lockfile</td><td>Records exact dependency versions for reproducible installs</td><td>01 / 02</td><td>锁文件</td></tr>
+    <tr><td>Event loop</td><td>Sync code → drain microtasks → take one task, repeat</td><td>03</td><td>事件循环</td></tr>
+    <tr><td>Microtask / task</td><td>Promise callbacks / timer, I/O and event callbacks</td><td>03</td><td>微任务 / 宏任务</td></tr>
+    <tr><td>Floating promise</td><td>A promise never awaited or handled; its errors get swallowed</td><td>03</td><td>漂浮的 Promise</td></tr>
+    <tr><td>Closure</td><td>A function remembering variables from the scope it was created in</td><td>03</td><td>闭包</td></tr>
+    <tr><td>Immutable update</td><td>Creating new objects / arrays instead of mutating</td><td>03 / 06</td><td>不可变更新</td></tr>
+    <tr><td>ESM / CJS</td><td>Modern import/export modules / the old require system</td><td>03</td><td>ES 模块 / CommonJS</td></tr>
+  </tbody>
+</table>
+
+<h3>Type system</h3>
+<table>
+  <thead><tr><th>Term</th><th>One-line meaning</th><th>Ch.</th><th>中文</th></tr></thead>
+  <tbody>
+    <tr><td>Structural typing</td><td>Compatibility decided by shape, not declared relationships</td><td>04</td><td>结构化类型</td></tr>
+    <tr><td>Union type</td><td><code>A | B</code>: a value may be either</td><td>04</td><td>联合类型</td></tr>
+    <tr><td>Narrowing</td><td>The compiler gives more precise types at different points based on checks</td><td>04</td><td>类型收窄</td></tr>
+    <tr><td>Discriminated union</td><td>Several shapes told apart by a shared literal field</td><td>04</td><td>判别联合</td></tr>
+    <tr><td>Exhaustiveness check</td><td>Using <code>never</code> to ensure every branch is handled</td><td>04</td><td>穷尽检查</td></tr>
+    <tr><td>Generics</td><td>Staying general over a type-to-be-decided while keeping type info</td><td>04</td><td>泛型</td></tr>
+    <tr><td>Type assertion (<code>as</code>)</td><td>Telling the compiler "trust me", with no check at all</td><td>04</td><td>类型断言</td></tr>
+    <tr><td>Runtime validation</td><td>Checking real data at boundaries with Zod and similar</td><td>04</td><td>运行时校验</td></tr>
+    <tr><td>Single source of truth</td><td>Define once, derive everything else</td><td>04 / 08</td><td>单一事实来源</td></tr>
+  </tbody>
+</table>
+
+<h3>Web and frontend</h3>
+<table>
+  <thead><tr><th>Term</th><th>One-line meaning</th><th>Ch.</th><th>中文</th></tr></thead>
+  <tbody>
+    <tr><td>Same-origin policy / CORS</td><td>Browsers restrict cross-origin reads; servers opt out via response headers</td><td>05</td><td>同源策略 / 跨源资源共享</td></tr>
+    <tr><td>Preflight request</td><td>The OPTIONS check before a non-simple cross-origin request</td><td>05</td><td>预检请求</td></tr>
+    <tr><td>XSS / CSRF</td><td>Injected script execution / requests riding the user's cookies</td><td>05</td><td>跨站脚本 / 跨站请求伪造</td></tr>
+    <tr><td>DOM</td><td>The object tree representing the page in the browser</td><td>05</td><td>文档对象模型</td></tr>
+    <tr><td>Accessibility (a11y)</td><td>Making UI usable by keyboard, screen readers and more</td><td>05</td><td>可访问性</td></tr>
+    <tr><td>Responsive breakpoint</td><td>A screen-width threshold where layout changes</td><td>05</td><td>响应式断点</td></tr>
+    <tr><td>Component / props / state</td><td>A function returning UI / read-only inputs from the parent / data React keeps</td><td>06</td><td>组件 / 属性 / 状态</td></tr>
+    <tr><td>Reconciliation</td><td>Diffing old and new element trees to compute minimal DOM changes</td><td>06</td><td>协调 / 比对</td></tr>
+    <tr><td>Lifting state up</td><td>Moving shared state to the nearest common parent</td><td>06</td><td>提升状态</td></tr>
+    <tr><td>Derived state</td><td>A value computable from other data; don't store it separately</td><td>06</td><td>派生状态</td></tr>
+    <tr><td>Effect / cleanup</td><td>Syncing with external systems after render / undoing the previous sync</td><td>06</td><td>副作用 / 清理函数</td></tr>
+    <tr><td>Controlled / uncontrolled input</td><td>Value driven by state / kept by the browser</td><td>06</td><td>受控 / 非受控输入</td></tr>
+    <tr><td>Optimistic update</td><td>Show the expected result before the server confirms; roll back on failure</td><td>06</td><td>乐观更新</td></tr>
+    <tr><td>Server state</td><td>A local cache of remote data (what TanStack Query manages)</td><td>06</td><td>服务器状态</td></tr>
+    <tr><td>Debounce / throttle</td><td>Run only after input pauses / limit run frequency</td><td>06</td><td>防抖 / 节流</td></tr>
+  </tbody>
+</table>
+
+<h3>Rendering and full-stack</h3>
+<table>
+  <thead><tr><th>Term</th><th>One-line meaning</th><th>Ch.</th><th>中文</th></tr></thead>
+  <tbody>
+    <tr><td>CSR / SSR</td><td>HTML produced in the browser / on the server</td><td>07</td><td>客户端 / 服务端渲染</td></tr>
+    <tr><td>SSG / ISR</td><td>Generated at build / generated then cached and periodically refreshed</td><td>07</td><td>静态生成 / 增量静态再生</td></tr>
+    <tr><td>Streaming SSR</td><td>Send the shell first; slow parts stream in later</td><td>07</td><td>流式渲染</td></tr>
+    <tr><td>Hydration</td><td>The client reuses server HTML and attaches events</td><td>07</td><td>水合</td></tr>
+    <tr><td>Server / Client Components (RSC)</td><td>Exist only on the server / code shipped to the browser</td><td>07</td><td>服务器组件 / 客户端组件</td></tr>
+    <tr><td>Server Function / Server Action</td><td>Callable from the client, runs on the server (really a network endpoint)</td><td>07</td><td>服务器函数</td></tr>
+    <tr><td>Request waterfall</td><td>Requests that could run in parallel run in sequence</td><td>03 / 07</td><td>请求瀑布</td></tr>
+    <tr><td>Meta-framework</td><td>A full-stack framework adding routing, rendering, data loading on top of a UI library</td><td>01 / 07</td><td>元框架</td></tr>
+    <tr><td>End-to-end type safety</td><td>Types inferred from the database all the way to the UI</td><td>08</td><td>端到端类型安全</td></tr>
+    <tr><td>Migration</td><td>A versioned change to the database schema</td><td>08</td><td>迁移</td></tr>
+    <tr><td>Authentication / authorization</td><td>Who you are / what you may do</td><td>08</td><td>认证 / 授权</td></tr>
+    <tr><td>IDOR</td><td>Checking login but not resource ownership</td><td>08</td><td>不安全的直接对象引用</td></tr>
+    <tr><td>Idempotency</td><td>Repeating an operation doesn't repeat its effect</td><td>08</td><td>幂等</td></tr>
+    <tr><td>Exponential backoff</td><td>Retry after waits that double each time</td><td>08</td><td>指数退避</td></tr>
+    <tr><td>Dead-letter queue (DLQ)</td><td>Quarantine for messages that keep failing</td><td>14</td><td>死信队列</td></tr>
+  </tbody>
+</table>
+
+<h3>Deployment and engineering</h3>
+<table>
+  <thead><tr><th>Term</th><th>One-line meaning</th><th>Ch.</th><th>中文</th></tr></thead>
+  <tbody>
+    <tr><td>Serverless</td><td>Instances started on demand, pay per use, no servers to manage</td><td>09</td><td>无服务器</td></tr>
+    <tr><td>Edge computing</td><td>Running code at the node nearest the user</td><td>09</td><td>边缘计算</td></tr>
+    <tr><td>Cold start</td><td>Startup delay when a new instance handles its first request</td><td>09</td><td>冷启动</td></tr>
+    <tr><td>V8 isolate</td><td>An execution-isolation unit lighter than a container (Cloudflare Workers)</td><td>09</td><td>隔离沙箱</td></tr>
+    <tr><td>Binding</td><td>A resource injected into a Worker via <code>env</code></td><td>09</td><td>绑定</td></tr>
+    <tr><td>Preview deployment</td><td>An isolated environment created automatically per PR</td><td>09</td><td>预览部署</td></tr>
+    <tr><td>Definition of Done</td><td>The checklist a task must satisfy to count as done</td><td>10</td><td>完成定义</td></tr>
+    <tr><td>E2E test</td><td>A test simulating user actions in a real browser</td><td>10</td><td>端到端测试</td></tr>
+    <tr><td>CI</td><td>Automatically running checks on every commit</td><td>10</td><td>持续集成</td></tr>
+    <tr><td>Observability</td><td>Logs, metrics and traces for understanding production</td><td>10</td><td>可观测性</td></tr>
+  </tbody>
+</table>
+
+<h3>AI and agents</h3>
+<table>
+  <thead><tr><th>Term</th><th>One-line meaning</th><th>Ch.</th><th>中文</th></tr></thead>
+  <tbody>
+    <tr><td>Token</td><td>The unit of text models process and bill by</td><td>11</td><td>词元</td></tr>
+    <tr><td>Context window</td><td>Max tokens one request can hold</td><td>11</td><td>上下文窗口</td></tr>
+    <tr><td>Time to first token (TTFT)</td><td>Time from request to the first token arriving</td><td>11</td><td>首 token 时间</td></tr>
+    <tr><td>Structured output</td><td>Constraining the model to return schema-conforming JSON</td><td>11</td><td>结构化输出</td></tr>
+    <tr><td>Tool / function calling</td><td>The model asking your code to run a function</td><td>11</td><td>工具调用</td></tr>
+    <tr><td>Embedding</td><td>Mapping text to vectors; similar meaning, nearby vectors</td><td>11</td><td>嵌入向量</td></tr>
+    <tr><td>RAG</td><td>Retrieve relevant material first, then generate from it</td><td>11</td><td>检索增强生成</td></tr>
+    <tr><td>Prompt caching</td><td>Repeated request prefixes processed cheaper and faster</td><td>11</td><td>提示缓存</td></tr>
+    <tr><td>Evals</td><td>Measuring AI feature quality with sample sets and scoring rules</td><td>11</td><td>评估</td></tr>
+    <tr><td>Prompt injection</td><td>Instructions smuggled in data to hijack the model</td><td>11</td><td>提示注入</td></tr>
+    <tr><td>Agent</td><td>A model using tools in a loop until the goal is reached</td><td>12</td><td>智能体</td></tr>
+    <tr><td>Harness</td><td>Everything around the model: instructions, tools, context management, permissions, feedback</td><td>12</td><td>挽具 / 外围框架</td></tr>
+    <tr><td>Context engineering</td><td>Deciding what goes into context on every turn</td><td>12</td><td>上下文工程</td></tr>
+    <tr><td>Compaction</td><td>Summarizing earlier context to free space</td><td>12</td><td>压缩</td></tr>
+    <tr><td>Subagent</td><td>A subtask worker with its own context</td><td>12</td><td>子智能体</td></tr>
+    <tr><td>MCP</td><td>An open protocol for plugging tools and data into agent hosts</td><td>12</td><td>模型上下文协议</td></tr>
+    <tr><td>Skills / hooks</td><td>Expertise loaded on demand / scripts run deterministically at lifecycle events</td><td>12</td><td>技能 / 钩子</td></tr>
+    <tr><td>Human-in-the-loop</td><td>Key steps require human confirmation</td><td>12</td><td>人在回路</td></tr>
+    <tr><td>Spec / acceptance criteria</td><td>What to build and how to judge it's done</td><td>13</td><td>规格 / 验收标准</td></tr>
+    <tr><td>Vertical slice</td><td>The smallest end-to-end runnable increment</td><td>13</td><td>纵向切片</td></tr>
+  </tbody>
+</table>
+
+<h2 id="plan">An 8-week study plan</h2>
+
+<p>Designed for 8–10 hours a week. Every week has a LinkNote milestone — <strong>shipping something that runs</strong> matters more than finishing chapters.</p>
+
+<table>
+  <thead><tr><th>Wk</th><th>Read</th><th>Build (LinkNote milestone)</th><th>This week's check</th></tr></thead>
+  <tbody>
+    <tr><td>1</td><td>00, 01, 02</td><td>Set up the environment; run hello.ts; create a Vite + React project; write a first AGENTS.md</td><td>Explain how tsc differs from node running .ts</td></tr>
+    <tr><td>2</td><td>03, 04</td><td>A script that fetches page titles in bulk: concurrency limit, timeout, allSettled; a Zod discriminated union for Bookmark</td><td>Predict event-loop output order; no any in your code</td></tr>
+    <tr><td>3</td><td>05, 06</td><td>A list page on fake data: cards, tag filter (URL state), empty state, add form</td><td>Say where each piece of state lives, and why</td></tr>
+    <tr><td>4</td><td>07, 08</td><td>Move to Next.js or TanStack Start; add a database (Drizzle) and login; implement CRUD</td><td>Draw a request's layers and where types come from; delete endpoint safe from IDOR</td></tr>
+    <tr><td>5</td><td>09, 10</td><td>Deploy (any platform); set up CI; add unit tests and one E2E test</td><td>A public URL exists; CI runs on PRs automatically</td></tr>
+    <tr><td>6</td><td>11</td><td>Async summaries: queue + structured output + status updates; streaming "Ask my bookmarks" (read-only tool)</td><td>A 20-sample eval set; you know the cost of one summary</td></tr>
+    <tr><td>7</td><td>12, 13</td><td>Upgrade "Ask my bookmarks" to an agent; write a skill or hook for the project; ship a new feature with the six-element template</td><td>One feature goes from spec to merge in one pass</td></tr>
+    <tr><td>8</td><td>14, review</td><td>Write a design doc for LinkNote (with estimates); practice 5 interview questions (record yourself answering)</td><td>Present LinkNote's system design within 45 minutes</td></tr>
+  </tbody>
+</table>
+
+<div class="callout warn">
+  <span class="callout-title">How to use the plan</span>
+  <p>It's a reference pace, not a strict syllabus. If you already have a real project, use it in place of LinkNote and follow the same order. The one principle that matters: <strong>ship something that runs every week</strong> — don't spend weeks reading without building, and don't spend a week "setting up the perfect learning environment".</p>
+</div>
+
+<h2 id="checklist">Self-assessment checklist</h2>
+
+<p>Tick the items you can do <strong>without notes, in your own words</strong> (ticks are saved locally in your browser).</p>
+
+<div id="vh-checklist">
+<h3>Deep (must have)</h3>
+<ul class="checklist">
+  <li><label><input type="checkbox" data-k="c1"> Predict and explain the output order of code with setTimeout / Promise / await</label></li>
+  <li><label><input type="checkbox" data-k="c2"> Explain how single-threaded Node handles high concurrency, and what blocks it</label></li>
+  <li><label><input type="checkbox" data-k="c3"> Explain type erasure and name at least three kinds of data that need runtime validation</label></li>
+  <li><label><input type="checkbox" data-k="c4"> Model a multi-state entity as a discriminated union with an exhaustiveness check</label></li>
+  <li><label><input type="checkbox" data-k="c5"> Explain why CORS exists and how to configure credentialed cross-origin requests</label></li>
+  <li><label><input type="checkbox" data-k="c6"> Describe React's full internal flow after a setState</label></li>
+  <li><label><input type="checkbox" data-k="c7"> Decide whether a useEffect is necessary and give an alternative</label></li>
+  <li><label><input type="checkbox" data-k="c8"> Distinguish SSR from RSC and explain the causes of hydration mismatches</label></li>
+  <li><label><input type="checkbox" data-k="c9"> Point out code that will break on a serverless platform</label></li>
+  <li><label><input type="checkbox" data-k="c10"> Draw a tool call's round trip and say where execution happens</label></li>
+  <li><label><input type="checkbox" data-k="c11"> Explain the main techniques of context engineering</label></li>
+  <li><label><input type="checkbox" data-k="c12"> Explain how prompt injection works and give at least three defenses</label></li>
+</ul>
+<h3>Practice</h3>
+<ul class="checklist">
+  <li><label><input type="checkbox" data-k="p1"> Build and deploy a full-stack app with a database and login from scratch</label></li>
+  <li><label><input type="checkbox" data-k="p2"> Configure CI: type check, lint, tests, build</label></li>
+  <li><label><input type="checkbox" data-k="p3"> Implement streaming AI chat with one read-only tool</label></li>
+  <li><label><input type="checkbox" data-k="p4"> Constrain LLM structured output with Zod and handle failures</label></li>
+  <li><label><input type="checkbox" data-k="p5"> Build a small eval set for an AI feature</label></li>
+  <li><label><input type="checkbox" data-k="p6"> Write a six-element task description that lets an agent ship a feature in one pass</label></li>
+  <li><label><input type="checkbox" data-k="p7"> Review an agent PR in 10 minutes with the checklist and find at least one problem</label></li>
+  <li><label><input type="checkbox" data-k="p8"> Turn a repeated correction into an AGENTS.md entry, a hook or a lint rule</label></li>
+</ul>
+</div>
+<script>
+(function () {
+  var box = document.getElementById('vh-checklist');
+  var state = {};
+  try { state = JSON.parse(localStorage.getItem('vh-checklist') || '{}'); } catch (e) {}
+  box.querySelectorAll('input[type=checkbox]').forEach(function (cb) {
+    cb.checked = !!state[cb.dataset.k];
+    cb.addEventListener('change', function () {
+      state[cb.dataset.k] = cb.checked;
+      try { localStorage.setItem('vh-checklist', JSON.stringify(state)); } catch (e) {}
+    });
+  });
+})();
+</script>
+<style>
+  .checklist { list-style: none; padding-left: 0 !important; }
+  .checklist li { margin: .4em 0; }
+  .checklist label { display: flex; gap: 10px; align-items: flex-start; cursor: pointer; }
+  .checklist input { margin-top: .45em; width: 16px; height: 16px; accent-color: var(--accent); flex: none; }
+</style>
+
+<h2 id="resources">Official resources</h2>
+
+<p>Things change fast; for concrete APIs, trust the official docs. You can also hand these links to your agent and have it read the docs before writing code.</p>
+
+<table>
+  <thead><tr><th>Area</th><th>Resource</th></tr></thead>
+  <tbody>
+    <tr><td>JavaScript / web platform</td><td><a href="https://developer.mozilla.org/" rel="noopener">MDN Web Docs</a></td></tr>
+    <tr><td>TypeScript</td><td><a href="https://www.typescriptlang.org/docs/" rel="noopener">typescriptlang.org/docs</a> (the Handbook)</td></tr>
+    <tr><td>Node.js</td><td><a href="https://nodejs.org/docs/latest/api/" rel="noopener">nodejs.org/docs</a></td></tr>
+    <tr><td>React</td><td><a href="https://react.dev/learn" rel="noopener">react.dev/learn</a> (especially "You Might Not Need an Effect")</td></tr>
+    <tr><td>Next.js</td><td><a href="https://nextjs.org/docs" rel="noopener">nextjs.org/docs</a></td></tr>
+    <tr><td>TanStack (Start / Router / Query)</td><td><a href="https://tanstack.com/" rel="noopener">tanstack.com</a></td></tr>
+    <tr><td>Vite</td><td><a href="https://vite.dev/" rel="noopener">vite.dev</a></td></tr>
+    <tr><td>Tailwind CSS / shadcn/ui</td><td><a href="https://tailwindcss.com/docs" rel="noopener">tailwindcss.com/docs</a> · <a href="https://ui.shadcn.com/" rel="noopener">ui.shadcn.com</a></td></tr>
+    <tr><td>Zod</td><td><a href="https://zod.dev/" rel="noopener">zod.dev</a></td></tr>
+    <tr><td>Drizzle ORM</td><td><a href="https://orm.drizzle.team/" rel="noopener">orm.drizzle.team</a></td></tr>
+    <tr><td>Hono</td><td><a href="https://hono.dev/" rel="noopener">hono.dev</a></td></tr>
+    <tr><td>Better Auth</td><td><a href="https://www.better-auth.com/" rel="noopener">better-auth.com</a></td></tr>
+    <tr><td>Vercel</td><td><a href="https://vercel.com/docs" rel="noopener">vercel.com/docs</a></td></tr>
+    <tr><td>Cloudflare Workers</td><td><a href="https://developers.cloudflare.com/workers/" rel="noopener">developers.cloudflare.com/workers</a> · <a href="https://developers.cloudflare.com/agents/" rel="noopener">Agents SDK</a></td></tr>
+    <tr><td>Vitest / Playwright</td><td><a href="https://vitest.dev/" rel="noopener">vitest.dev</a> · <a href="https://playwright.dev/" rel="noopener">playwright.dev</a></td></tr>
+    <tr><td>AI SDK</td><td><a href="https://ai-sdk.dev/" rel="noopener">ai-sdk.dev</a></td></tr>
+    <tr><td>Claude API</td><td><a href="https://platform.claude.com/docs" rel="noopener">platform.claude.com/docs</a></td></tr>
+    <tr><td>Claude Code</td><td><a href="https://code.claude.com/docs" rel="noopener">code.claude.com/docs</a></td></tr>
+    <tr><td>Model Context Protocol</td><td><a href="https://modelcontextprotocol.io/" rel="noopener">modelcontextprotocol.io</a></td></tr>
+    <tr><td>pi coding agent</td><td><a href="https://github.com/badlogic/pi-mono" rel="noopener">github.com/badlogic/pi-mono</a></td></tr>
+  </tbody>
+</table>
+
+<h2 id="closing">Finally</h2>
+
+<p>Back to Chapter 00's analogy: from assembly to OOP, engineers wrote less code, but the demand for understanding "how the system works" didn't drop — it expanded to a higher level. Today's shift is the same. Agents will keep getting stronger, but <strong>knowing what you want, saying it clearly, and judging right from wrong</strong> — those three stay yours.</p>
+
+<p>Go build what you want to build.</p>
+
+</article></main>
+</body>
+</html>

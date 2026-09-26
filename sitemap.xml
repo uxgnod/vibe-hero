@@ -1,0 +1,234 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
+  <url>
+    <loc>https://uxgnod.github.io/vibe-hero/</loc>
+    <lastmod>2026-09-26</lastmod>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://uxgnod.github.io/vibe-hero/zh/index.html"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://uxgnod.github.io/vibe-hero/en/index.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://uxgnod.github.io/vibe-hero/"/>
+  </url>
+  <url>
+    <loc>https://uxgnod.github.io/vibe-hero/zh/index.html</loc>
+    <lastmod>2026-09-26</lastmod>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://uxgnod.github.io/vibe-hero/zh/index.html"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://uxgnod.github.io/vibe-hero/en/index.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://uxgnod.github.io/vibe-hero/en/index.html"/>
+  </url>
+  <url>
+    <loc>https://uxgnod.github.io/vibe-hero/zh/landscape.html</loc>
+    <lastmod>2026-09-26</lastmod>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://uxgnod.github.io/vibe-hero/zh/landscape.html"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://uxgnod.github.io/vibe-hero/en/landscape.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://uxgnod.github.io/vibe-hero/en/landscape.html"/>
+  </url>
+  <url>
+    <loc>https://uxgnod.github.io/vibe-hero/zh/setup.html</loc>
+    <lastmod>2026-09-26</lastmod>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://uxgnod.github.io/vibe-hero/zh/setup.html"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://uxgnod.github.io/vibe-hero/en/setup.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://uxgnod.github.io/vibe-hero/en/setup.html"/>
+  </url>
+  <url>
+    <loc>https://uxgnod.github.io/vibe-hero/zh/javascript.html</loc>
+    <lastmod>2026-09-26</lastmod>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://uxgnod.github.io/vibe-hero/zh/javascript.html"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://uxgnod.github.io/vibe-hero/en/javascript.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://uxgnod.github.io/vibe-hero/en/javascript.html"/>
+  </url>
+  <url>
+    <loc>https://uxgnod.github.io/vibe-hero/zh/typescript.html</loc>
+    <lastmod>2026-09-26</lastmod>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://uxgnod.github.io/vibe-hero/zh/typescript.html"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://uxgnod.github.io/vibe-hero/en/typescript.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://uxgnod.github.io/vibe-hero/en/typescript.html"/>
+  </url>
+  <url>
+    <loc>https://uxgnod.github.io/vibe-hero/zh/web.html</loc>
+    <lastmod>2026-09-26</lastmod>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://uxgnod.github.io/vibe-hero/zh/web.html"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://uxgnod.github.io/vibe-hero/en/web.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://uxgnod.github.io/vibe-hero/en/web.html"/>
+  </url>
+  <url>
+    <loc>https://uxgnod.github.io/vibe-hero/zh/react.html</loc>
+    <lastmod>2026-09-26</lastmod>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://uxgnod.github.io/vibe-hero/zh/react.html"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://uxgnod.github.io/vibe-hero/en/react.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://uxgnod.github.io/vibe-hero/en/react.html"/>
+  </url>
+  <url>
+    <loc>https://uxgnod.github.io/vibe-hero/zh/rendering.html</loc>
+    <lastmod>2026-09-26</lastmod>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://uxgnod.github.io/vibe-hero/zh/rendering.html"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://uxgnod.github.io/vibe-hero/en/rendering.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://uxgnod.github.io/vibe-hero/en/rendering.html"/>
+  </url>
+  <url>
+    <loc>https://uxgnod.github.io/vibe-hero/zh/backend.html</loc>
+    <lastmod>2026-09-26</lastmod>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://uxgnod.github.io/vibe-hero/zh/backend.html"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://uxgnod.github.io/vibe-hero/en/backend.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://uxgnod.github.io/vibe-hero/en/backend.html"/>
+  </url>
+  <url>
+    <loc>https://uxgnod.github.io/vibe-hero/zh/deploy.html</loc>
+    <lastmod>2026-09-26</lastmod>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://uxgnod.github.io/vibe-hero/zh/deploy.html"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://uxgnod.github.io/vibe-hero/en/deploy.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://uxgnod.github.io/vibe-hero/en/deploy.html"/>
+  </url>
+  <url>
+    <loc>https://uxgnod.github.io/vibe-hero/zh/engineering.html</loc>
+    <lastmod>2026-09-26</lastmod>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://uxgnod.github.io/vibe-hero/zh/engineering.html"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://uxgnod.github.io/vibe-hero/en/engineering.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://uxgnod.github.io/vibe-hero/en/engineering.html"/>
+  </url>
+  <url>
+    <loc>https://uxgnod.github.io/vibe-hero/zh/ai-apps.html</loc>
+    <lastmod>2026-09-26</lastmod>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://uxgnod.github.io/vibe-hero/zh/ai-apps.html"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://uxgnod.github.io/vibe-hero/en/ai-apps.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://uxgnod.github.io/vibe-hero/en/ai-apps.html"/>
+  </url>
+  <url>
+    <loc>https://uxgnod.github.io/vibe-hero/zh/agents.html</loc>
+    <lastmod>2026-09-26</lastmod>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://uxgnod.github.io/vibe-hero/zh/agents.html"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://uxgnod.github.io/vibe-hero/en/agents.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://uxgnod.github.io/vibe-hero/en/agents.html"/>
+  </url>
+  <url>
+    <loc>https://uxgnod.github.io/vibe-hero/zh/workflow.html</loc>
+    <lastmod>2026-09-26</lastmod>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://uxgnod.github.io/vibe-hero/zh/workflow.html"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://uxgnod.github.io/vibe-hero/en/workflow.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://uxgnod.github.io/vibe-hero/en/workflow.html"/>
+  </url>
+  <url>
+    <loc>https://uxgnod.github.io/vibe-hero/zh/system-design.html</loc>
+    <lastmod>2026-09-26</lastmod>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://uxgnod.github.io/vibe-hero/zh/system-design.html"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://uxgnod.github.io/vibe-hero/en/system-design.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://uxgnod.github.io/vibe-hero/en/system-design.html"/>
+  </url>
+  <url>
+    <loc>https://uxgnod.github.io/vibe-hero/zh/glossary.html</loc>
+    <lastmod>2026-09-26</lastmod>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://uxgnod.github.io/vibe-hero/zh/glossary.html"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://uxgnod.github.io/vibe-hero/en/glossary.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://uxgnod.github.io/vibe-hero/en/glossary.html"/>
+  </url>
+  <url>
+    <loc>https://uxgnod.github.io/vibe-hero/en/index.html</loc>
+    <lastmod>2026-09-26</lastmod>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://uxgnod.github.io/vibe-hero/zh/index.html"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://uxgnod.github.io/vibe-hero/en/index.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://uxgnod.github.io/vibe-hero/en/index.html"/>
+  </url>
+  <url>
+    <loc>https://uxgnod.github.io/vibe-hero/en/landscape.html</loc>
+    <lastmod>2026-09-26</lastmod>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://uxgnod.github.io/vibe-hero/zh/landscape.html"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://uxgnod.github.io/vibe-hero/en/landscape.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://uxgnod.github.io/vibe-hero/en/landscape.html"/>
+  </url>
+  <url>
+    <loc>https://uxgnod.github.io/vibe-hero/en/setup.html</loc>
+    <lastmod>2026-09-26</lastmod>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://uxgnod.github.io/vibe-hero/zh/setup.html"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://uxgnod.github.io/vibe-hero/en/setup.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://uxgnod.github.io/vibe-hero/en/setup.html"/>
+  </url>
+  <url>
+    <loc>https://uxgnod.github.io/vibe-hero/en/javascript.html</loc>
+    <lastmod>2026-09-26</lastmod>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://uxgnod.github.io/vibe-hero/zh/javascript.html"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://uxgnod.github.io/vibe-hero/en/javascript.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://uxgnod.github.io/vibe-hero/en/javascript.html"/>
+  </url>
+  <url>
+    <loc>https://uxgnod.github.io/vibe-hero/en/typescript.html</loc>
+    <lastmod>2026-09-26</lastmod>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://uxgnod.github.io/vibe-hero/zh/typescript.html"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://uxgnod.github.io/vibe-hero/en/typescript.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://uxgnod.github.io/vibe-hero/en/typescript.html"/>
+  </url>
+  <url>
+    <loc>https://uxgnod.github.io/vibe-hero/en/web.html</loc>
+    <lastmod>2026-09-26</lastmod>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://uxgnod.github.io/vibe-hero/zh/web.html"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://uxgnod.github.io/vibe-hero/en/web.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://uxgnod.github.io/vibe-hero/en/web.html"/>
+  </url>
+  <url>
+    <loc>https://uxgnod.github.io/vibe-hero/en/react.html</loc>
+    <lastmod>2026-09-26</lastmod>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://uxgnod.github.io/vibe-hero/zh/react.html"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://uxgnod.github.io/vibe-hero/en/react.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://uxgnod.github.io/vibe-hero/en/react.html"/>
+  </url>
+  <url>
+    <loc>https://uxgnod.github.io/vibe-hero/en/rendering.html</loc>
+    <lastmod>2026-09-26</lastmod>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://uxgnod.github.io/vibe-hero/zh/rendering.html"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://uxgnod.github.io/vibe-hero/en/rendering.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://uxgnod.github.io/vibe-hero/en/rendering.html"/>
+  </url>
+  <url>
+    <loc>https://uxgnod.github.io/vibe-hero/en/backend.html</loc>
+    <lastmod>2026-09-26</lastmod>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://uxgnod.github.io/vibe-hero/zh/backend.html"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://uxgnod.github.io/vibe-hero/en/backend.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://uxgnod.github.io/vibe-hero/en/backend.html"/>
+  </url>
+  <url>
+    <loc>https://uxgnod.github.io/vibe-hero/en/deploy.html</loc>
+    <lastmod>2026-09-26</lastmod>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://uxgnod.github.io/vibe-hero/zh/deploy.html"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://uxgnod.github.io/vibe-hero/en/deploy.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://uxgnod.github.io/vibe-hero/en/deploy.html"/>
+  </url>
+  <url>
+    <loc>https://uxgnod.github.io/vibe-hero/en/engineering.html</loc>
+    <lastmod>2026-09-26</lastmod>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://uxgnod.github.io/vibe-hero/zh/engineering.html"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://uxgnod.github.io/vibe-hero/en/engineering.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://uxgnod.github.io/vibe-hero/en/engineering.html"/>
+  </url>
+  <url>
+    <loc>https://uxgnod.github.io/vibe-hero/en/ai-apps.html</loc>
+    <lastmod>2026-09-26</lastmod>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://uxgnod.github.io/vibe-hero/zh/ai-apps.html"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://uxgnod.github.io/vibe-hero/en/ai-apps.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://uxgnod.github.io/vibe-hero/en/ai-apps.html"/>
+  </url>
+  <url>
+    <loc>https://uxgnod.github.io/vibe-hero/en/agents.html</loc>
+    <lastmod>2026-09-26</lastmod>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://uxgnod.github.io/vibe-hero/zh/agents.html"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://uxgnod.github.io/vibe-hero/en/agents.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://uxgnod.github.io/vibe-hero/en/agents.html"/>
+  </url>
+  <url>
+    <loc>https://uxgnod.github.io/vibe-hero/en/workflow.html</loc>
+    <lastmod>2026-09-26</lastmod>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://uxgnod.github.io/vibe-hero/zh/workflow.html"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://uxgnod.github.io/vibe-hero/en/workflow.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://uxgnod.github.io/vibe-hero/en/workflow.html"/>
+  </url>
+  <url>
+    <loc>https://uxgnod.github.io/vibe-hero/en/system-design.html</loc>
+    <lastmod>2026-09-26</lastmod>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://uxgnod.github.io/vibe-hero/zh/system-design.html"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://uxgnod.github.io/vibe-hero/en/system-design.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://uxgnod.github.io/vibe-hero/en/system-design.html"/>
+  </url>
+  <url>
+    <loc>https://uxgnod.github.io/vibe-hero/en/glossary.html</loc>
+    <lastmod>2026-09-26</lastmod>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://uxgnod.github.io/vibe-hero/zh/glossary.html"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://uxgnod.github.io/vibe-hero/en/glossary.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://uxgnod.github.io/vibe-hero/en/glossary.html"/>
+  </url>
+</urlset>

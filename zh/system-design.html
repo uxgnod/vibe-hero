@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>系统设计与面试 · Vibe Hero</title>
+<meta name="description" content="全栈 AI 应用的系统设计框架：需求、估算、架构、深入、权衡；以 LinkNote 为例，附高频面试题与答题要点。">
+<!-- seo -->
+<link rel="canonical" href="https://uxgnod.github.io/vibe-hero/zh/system-design.html">
+<link rel="alternate" hreflang="zh-CN" href="https://uxgnod.github.io/vibe-hero/zh/system-design.html">
+<link rel="alternate" hreflang="en" href="https://uxgnod.github.io/vibe-hero/en/system-design.html">
+<link rel="alternate" hreflang="x-default" href="https://uxgnod.github.io/vibe-hero/en/system-design.html">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Vibe Hero">
+<meta property="og:title" content="系统设计与面试 · Vibe Hero">
+<meta property="og:description" content="全栈 AI 应用的系统设计框架：需求、估算、架构、深入、权衡；以 LinkNote 为例，附高频面试题与答题要点。">
+<meta property="og:url" content="https://uxgnod.github.io/vibe-hero/zh/system-design.html">
+<meta property="og:image" content="https://uxgnod.github.io/vibe-hero/assets/og-image.png">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:locale:alternate" content="en_US">
+<meta name="twitter:card" content="summary_large_image">
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "TechArticle", "headline": "系统设计与面试", "description": "全栈 AI 应用的系统设计框架：需求、估算、架构、深入、权衡；以 LinkNote 为例，附高频面试题与答题要点。", "inLanguage": "zh-CN", "url": "https://uxgnod.github.io/vibe-hero/zh/system-design.html", "image": "https://uxgnod.github.io/vibe-hero/assets/og-image.png", "dateModified": "2026-09-26", "author": {"@type": "Person", "name": "uxgnod", "url": "https://github.com/uxgnod"}, "isPartOf": {"@type": "WebSite", "name": "Vibe Hero", "url": "https://uxgnod.github.io/vibe-hero/"}}</script>
+<link rel="icon" href="../assets/favicon.svg">
+<link rel="stylesheet" href="../assets/style.css">
+<script>try{var t=localStorage.getItem('vh-theme');if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+<script defer src="../assets/app.js"></script>
+<script defer src="../assets/widgets.js"></script>
+</head>
+<body>
+<main class="content"><article class="doc">
+
+<p class="eyebrow">CHAPTER 14 · 驾驭</p>
+<h1>系统设计与面试</h1>
+<p class="lead">系统设计不是背诵标准答案，而是一种<strong>结构化的思考方式</strong>：从需求和数量级出发，推导出架构，并清楚说明每个选择的代价。这种能力在面试中被考察，在日常中则决定了你能否审查 Agent 给出的设计方案。</p>
+<div class="meta"><span>⏱ 约 60 分钟</span><span class="badge deep">原理</span>（估算与权衡）<span class="badge use">会用</span>（设计框架与答题模板）</div>
+
+<div class="goals">
+  <div class="goals-title">读完本章，你应该能够：</div>
+  <ul>
+    <li>按五步框架完成一次系统设计，并控制讨论节奏。</li>
+    <li>做数量级估算，尤其是 AI 功能的 token 成本估算，并据此发现设计压力。</li>
+    <li>为 LinkNote 设计一个支撑百万用户的架构，并深入讨论去重、队列、限流、搜索、实时更新。</li>
+    <li>用要点框架回答 TS 全栈与 AI 方向的高频面试题。</li>
+  </ul>
+</div>
+
+<h2 id="question">开场：设计 LinkNote，支撑一百万用户</h2>
+
+<div class="callout question">
+  <span class="callout-title">开场问题</span>
+  <p>面试官说：“设计一个带 AI 摘要的链接收藏服务，支撑一百万注册用户。”你有 45 分钟。<strong>第一句话应该说什么？什么东西会成为这个系统最大的设计压力？</strong></p>
+</div>
+
+<p><strong>答案方向：</strong>第一句话应该是<strong>提问</strong>，而不是画框图：核心功能有哪些？读写比例如何？摘要需要多快出来？然后做一个粗略估算。估算会揭示一个反直觉的结论：在这个系统里，<strong>最大的压力不是数据库，而是 LLM 的成本</strong>——而最有效的解法是按 URL 去重（很多人收藏的是同一批热门文章）。整个设计会围绕这个发现展开。</p>
+
+<h2 id="framework">五步框架</h2>
+
+<ol class="steps">
+  <li><strong>澄清需求（5 分钟）</strong>：功能需求（做什么）+ 非功能需求（规模、延迟、可用性、一致性、成本、安全）。明确“不做什么”。</li>
+  <li><strong>估算（5 分钟）</strong>：用户量 → 请求量（QPS）→ 存储量 → 带宽 → <em>AI 成本</em>。只要数量级。</li>
+  <li><strong>高层架构（10 分钟）</strong>：画出主要组件和数据流，先让整体跑通。</li>
+  <li><strong>深入关键点（15 分钟）</strong>：挑 2～3 个最有挑战的部分深入：数据模型、瓶颈、失败处理。</li>
+  <li><strong>权衡与演进（5 分钟）</strong>：说明主要取舍，以及规模再大 10 倍时会先改哪里。</li>
+</ol>
+
+<p>这个框架同样适用于审查 Agent 的设计方案：它是否澄清了需求？有没有估算？它挑出的“关键点”是不是真正的关键点？</p>
+
+<h2 id="requirements">第一步：澄清需求</h2>
+
+<div class="two-col">
+  <div class="card"><h4>功能需求</h4><p>• 保存链接，自动生成摘要和标签<br>• 列表、按标签筛选、全文与语义搜索<br>• “问我的收藏”对话<br>• <em>不做</em>：社交分享、协作、浏览器插件（本次）</p></div>
+  <div class="card"><h4>非功能需求</h4><p>• 100 万注册用户，日活约 10%<br>• 保存后 1 秒内返回；摘要 30 秒内完成即可<br>• 列表页 P95 &lt; 300ms<br>• 用户数据严格隔离；可接受摘要短暂延迟（最终一致）</p></div>
+</div>
+
+<h2 id="estimate">第二步：估算 <span class="badge deep">原理</span></h2>
+
+<table>
+  <thead><tr><th>指标</th><th>计算</th><th>结果</th></tr></thead>
+  <tbody>
+    <tr><td>日活用户</td><td>100 万 × 10%</td><td>10 万</td></tr>
+    <tr><td>写入（保存链接）</td><td>10 万 × 3 次/天 = 30 万/天 ÷ 86400</td><td>平均约 3.5 次/秒，峰值按 10 倍 ≈ 35 次/秒</td></tr>
+    <tr><td>读取（列表、搜索）</td><td>10 万 × 20 次/天 = 200 万/天</td><td>平均约 23 次/秒，峰值 ≈ 230 次/秒</td></tr>
+    <tr><td>存储</td><td>每条约 2KB（含摘要）× 30 万/天 × 365</td><td>约 220 GB/年（不含网页快照）</td></tr>
+    <tr><td><strong>LLM 输入</strong></td><td>30 万次 × 约 3000 token（清洗后的正文）</td><td><strong>约 9 亿 token/天</strong></td></tr>
+    <tr><td><strong>LLM 输出</strong></td><td>30 万次 × 约 300 token</td><td><strong>约 9000 万 token/天</strong></td></tr>
+  </tbody>
+</table>
+
+<p>以某个中档模型的价格为例（输入每百万 token 2 美元、输出每百万 token 10 美元）：输入约 1800 美元/天，输出约 900 美元/天，<strong>合计每天约 2700 美元、每月约 8 万美元</strong>。相比之下，每秒几十次的数据库读写对任何一台像样的 Postgres 都不构成压力。</p>
+
+<div class="callout tip">
+  <span class="callout-title">估算的价值</span>
+  <p>估算不需要精确，它的作用是<strong>找出设计压力在哪里</strong>。这里的结论是：数据库是“普通”问题，LLM 成本是“核心”问题。这直接决定了深入讨论的重点——摘要去重、输入清洗、模型选择、批处理。没有估算，你很可能花 15 分钟讨论数据库分片，而那根本不是瓶颈。</p>
+</div>
+
+<h2 id="architecture">第三步：高层架构</h2>
+
+<figure class="diagram">
+<div class="diagram-scroll">
+<svg viewBox="0 0 780 420" role="img" aria-label="LinkNote 规模化架构">
+  <defs><marker id="sd1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="ar-fill"/></marker>
+  <marker id="sd2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="ar-deep"/></marker></defs>
+  <g font-size="12">
+    <rect x="15" y="170" width="110" height="60" rx="10" class="box-soft"/><text x="70" y="196" text-anchor="middle" font-weight="700">客户端</text><text x="70" y="214" text-anchor="middle" font-size="10.5" class="t-soft">Web / 插件 / MCP</text>
+    <rect x="150" y="170" width="100" height="60" rx="10" class="box-soft"/><text x="200" y="196" text-anchor="middle" font-weight="700">CDN</text><text x="200" y="214" text-anchor="middle" font-size="10.5" class="t-soft">静态资源</text>
+    <rect x="275" y="140" width="150" height="120" rx="10" class="box-accent"/>
+    <text x="350" y="166" text-anchor="middle" font-weight="700">应用服务</text>
+    <text x="350" y="186" text-anchor="middle" font-size="10.5" class="t-soft">SSR 页面 + API</text>
+    <text x="350" y="204" text-anchor="middle" font-size="10.5" class="t-soft">鉴权 · 校验 · 限流</text>
+    <text x="350" y="222" text-anchor="middle" font-size="10.5" class="t-soft">无状态，水平扩展</text>
+    <text x="350" y="240" text-anchor="middle" font-size="10.5" class="t-soft">SSE 推送状态</text>
+
+    <rect x="470" y="20" width="140" height="56" rx="10" class="box-ok"/><text x="540" y="44" text-anchor="middle" font-weight="700">Postgres</text><text x="540" y="62" text-anchor="middle" font-size="10.5" class="t-soft">主库 + 读副本 · pgvector</text>
+    <rect x="630" y="20" width="135" height="56" rx="10" class="box-ok"/><text x="697" y="44" text-anchor="middle" font-weight="700">Redis / KV</text><text x="697" y="62" text-anchor="middle" font-size="10.5" class="t-soft">缓存 · 限流计数</text>
+    <rect x="470" y="170" width="140" height="60" rx="10" class="box-purple"/><text x="540" y="196" text-anchor="middle" font-weight="700">任务队列</text><text x="540" y="214" text-anchor="middle" font-size="10.5" class="t-soft">重试 · 死信队列</text>
+    <rect x="470" y="300" width="140" height="80" rx="10" class="box-use"/><text x="540" y="326" text-anchor="middle" font-weight="700">摘要 Worker</text><text x="540" y="344" text-anchor="middle" font-size="10.5" class="t-soft">抓取 → 清洗 → 查缓存</text><text x="540" y="360" text-anchor="middle" font-size="10.5" class="t-soft">→ LLM → 嵌入 → 写库</text>
+    <rect x="645" y="170" width="120" height="60" rx="10" class="box-deep"/><text x="705" y="196" text-anchor="middle" font-weight="700">URL 摘要缓存</text><text x="705" y="214" text-anchor="middle" font-size="10.5" class="t-soft">按规范化 URL 去重</text>
+    <rect x="645" y="300" width="120" height="80" rx="10" class="box-deep"/><text x="705" y="326" text-anchor="middle" font-weight="700">LLM 网关</text><text x="705" y="344" text-anchor="middle" font-size="10.5" class="t-soft">限流 · 故障切换</text><text x="705" y="360" text-anchor="middle" font-size="10.5" class="t-soft">用量记录</text>
+    <rect x="275" y="330" width="150" height="50" rx="10" class="box-soft"/><text x="350" y="352" text-anchor="middle" font-weight="700">对象存储</text><text x="350" y="368" text-anchor="middle" font-size="10.5" class="t-soft">网页快照</text>
+  </g>
+  <line x1="125" y1="200" x2="147" y2="200" class="ln" marker-end="url(#sd1)"/>
+  <line x1="250" y1="200" x2="272" y2="200" class="ln" marker-end="url(#sd1)"/>
+  <line x1="425" y1="165" x2="468" y2="60" class="ln" marker-end="url(#sd1)"/>
+  <line x1="425" y1="150" x2="628" y2="55" class="ln ln-dash" marker-end="url(#sd1)"/>
+  <line x1="425" y1="200" x2="467" y2="200" class="ln" marker-end="url(#sd1)"/>
+  <line x1="540" y1="232" x2="540" y2="297" class="ln" marker-end="url(#sd1)"/>
+  <line x1="610" y1="325" x2="642" y2="215" class="ln-deep" marker-end="url(#sd2)"/>
+  <line x1="610" y1="345" x2="642" y2="345" class="ln-deep" marker-end="url(#sd2)"/>
+  <line x1="470" y1="340" x2="428" y2="355" class="ln" marker-end="url(#sd1)"/>
+  <path d="M500 298 C 470 250, 470 110, 510 78" class="ln ln-dash" marker-end="url(#sd1)"/>
+  <text x="390" y="410" text-anchor="middle" font-size="12" class="t-soft">写入路径：应用服务只写 pending 记录并投递任务（&lt;1 秒返回）；耗时工作全部在 Worker 中异步完成。</text>
+</svg>
+</div>
+<figcaption>规模化后的 LinkNote。红色部分是针对“LLM 成本”这一核心压力的设计。</figcaption>
+</figure>
+
+<p>这张图可以对应到第 09 章的任何一条部署路线：在 Cloudflare 上，应用服务是 Worker，队列是 Queues，缓存是 KV，限流可以用 Durable Objects；在 Vercel 上，应用服务是 Functions，数据库和 Redis 来自 Marketplace；自托管时，它们是 Docker 容器。<strong>架构的形状不依赖平台</strong>，平台只决定每个方块用什么实现。</p>
+
+<h2 id="deep-dive">第四步：深入关键点</h2>
+
+<h3>① 摘要去重：内容寻址缓存</h3>
+<p>把 URL <strong>规范化</strong>（小写域名、去掉 <code>utm_*</code> 等追踪参数、去掉锚点、统一末尾斜杠），计算哈希作为键。摘要结果存在一张与用户无关的 <code>page_summaries</code> 表中；用户的收藏只引用它。热门文章只需要生成一次摘要。假设 60% 的保存命中缓存，LLM 成本直接降到原来的 40%。</p>
+<p>需要讨论的细节：缓存多久失效（网页内容会更新）；同一个 URL 同时被 100 人保存时，如何避免生成 100 次（在任务层按 URL 哈希加锁或去重，也叫“请求合并”）；个性化需求（例如用户要求英文摘要）如何作为缓存键的一部分。</p>
+
+<h3>② 队列与失败处理</h3>
+<ul>
+  <li><strong>至少一次投递 + 幂等消费</strong>：队列可能重复投递，Worker 按 link id 和状态判断是否已处理，写入用 upsert。</li>
+  <li><strong>重试策略</strong>：网络错误、LLM 429 使用指数退避重试；网页 404、内容为空不重试，直接标记失败。</li>
+  <li><strong>死信队列（DLQ）</strong>：多次失败的任务进入死信队列，供排查，而不是无限重试消耗成本。</li>
+  <li><strong>背压</strong>：LLM 服务商有速率限制。Worker 的并发数应当受限，队列负责缓冲峰值。</li>
+</ul>
+
+<h3>③ 限流与滥用</h3>
+<p>免费用户每天最多保存 N 条、每分钟最多 M 次对话。实现上用令牌桶或滑动窗口算法，计数存在 Redis / KV 或按用户划分的 Durable Object 中。对 AI 功能，限流对象应该是<strong>成本</strong>（token 数），而不仅是请求次数。</p>
+
+<h3>④ 搜索</h3>
+<p>两种需求：关键词搜索（“react compiler”）和语义搜索（“怎么让组件少渲染”）。Postgres 可以同时承担：全文检索索引做关键词，pgvector 做向量相似度，两者结果融合（混合检索）。所有查询必须带上 <code>user_id</code> 过滤——在向量检索中容易被遗忘，导致跨用户数据泄露。数据规模继续增长时，再考虑专门的搜索服务。</p>
+
+<h3>⑤ 实时状态更新</h3>
+<table>
+  <thead><tr><th>方案</th><th>原理</th><th>适用</th></tr></thead>
+  <tbody>
+    <tr><td>轮询</td><td>客户端每隔几秒请求一次状态</td><td>最简单；对“30 秒内完成”的摘要完全够用</td></tr>
+    <tr><td>SSE</td><td>服务器单向推送，基于普通 HTTP</td><td>状态通知、LLM 流式输出</td></tr>
+    <tr><td>WebSocket</td><td>双向、长连接</td><td>聊天、协作编辑；在 serverless 上需要 Durable Objects 或专门服务</td></tr>
+  </tbody>
+</table>
+<p>面试中说出“先用轮询，因为需求允许；如果出现 X 情况再换 SSE”，比直接上 WebSocket 更能体现判断力。</p>
+
+<h2 id="tradeoffs">第五步：权衡与演进</h2>
+
+<table>
+  <thead><tr><th>决策</th><th>选择</th><th>代价 / 何时改变</th></tr></thead>
+  <tbody>
+    <tr><td>单体 vs 微服务</td><td>单体应用 + 独立 Worker</td><td>团队或部署节奏出现明显分化时再拆</td></tr>
+    <tr><td>SQL vs NoSQL</td><td>Postgres</td><td>关系清晰、需要事务和灵活查询；写入量远未到瓶颈</td></tr>
+    <tr><td>同步 vs 异步摘要</td><td>异步</td><td>用户需要处理“生成中”状态；换来稳定的写入延迟和可重试性</td></tr>
+    <tr><td>摘要一致性</td><td>最终一致</td><td>几秒到几十秒的延迟可以接受</td></tr>
+    <tr><td>模型选择</td><td>按任务分级：摘要用性价比高的配置，对话用更强的</td><td>需要评估集保证质量；可以按用户等级区分</td></tr>
+  </tbody>
+</table>
+
+<p><strong>规模再大 10 倍时</strong>：LLM 成本仍然是第一压力 → 更激进的缓存、批处理接口、模型分级；数据库读压力 → 读副本、列表缓存；搜索 → 独立的搜索服务；多区域 → 数据按区域分布，考虑合规要求。</p>
+
+<h2 id="ai-design">AI 系统设计的特有问题</h2>
+
+<ul>
+  <li><strong>成本模型</strong>：每个功能的单次成本 × 调用量，写进设计文档。设置预算告警。</li>
+  <li><strong>延迟预算</strong>：同步路径上的 LLM 调用要流式；非必要不放在同步路径上。</li>
+  <li><strong>降级与故障切换</strong>：模型服务不可用或限流时，是切换到备用模型、排队，还是返回“摘要暂不可用”？</li>
+  <li><strong>质量保障</strong>：评估集、线上抽样、用户反馈（点赞 / 点踩）回流到评估集。</li>
+  <li><strong>安全</strong>：提示注入（抓取的网页）、跨用户数据隔离（检索时过滤）、输出转义。</li>
+  <li><strong>数据与隐私</strong>：哪些用户数据会发送给第三方模型？是否需要用户同意？保留多久？</li>
+</ul>
+
+<h2 id="questions">高频面试题与答题要点</h2>
+
+<p>以下题目按方向分组。点开查看要点——注意它们是<strong>要点框架</strong>，回答时要结合自己的经历和例子。</p>
+
+<h3>JavaScript / TypeScript</h3>
+
+<details class="check"><summary>事件循环是什么？宏任务和微任务的区别？</summary><div class="answer"><p>单线程执行 JS；同步代码执行完后清空微任务队列（Promise 回调、await 后续），再取一个宏任务（计时器、I/O、事件）。微任务在每个宏任务之后全部清空，因此 Promise 回调总是先于 setTimeout。举一个输出顺序的例子并推演（第 03 章）。</p></div></details>
+
+<details class="check"><summary>Promise.all、allSettled、race、any 的区别和使用场景？</summary><div class="answer"><p>all：全部成功才成功，任一失败立即失败；allSettled：等全部结束，返回每个的结果；race：第一个结束的决定结果；any：第一个成功的决定结果。批量任务允许部分失败时用 allSettled，并提及并发上限。</p></div></details>
+
+<details class="check"><summary>TypeScript 的类型在运行时存在吗？这带来什么影响？</summary><div class="answer"><p>不存在，类型被擦除。影响：外部数据必须运行时校验（Zod）；as 断言不做任何检查；不能基于类型做运行时分支，需要判别字段。</p></div></details>
+
+<details class="check"><summary>interface 和 type 的区别？any、unknown、never 的区别？</summary><div class="answer"><p>interface 可声明合并、只能描述对象；type 可以表达联合、元组、映射类型等。any 关闭检查；unknown 需要收窄后使用；never 表示不可能的值，用于穷尽检查。</p></div></details>
+
+<details class="check"><summary>什么是闭包？在 React 中会引发什么问题？</summary><div class="answer"><p>函数捕获其创建时作用域中的变量。React 中每次渲染的 state 是快照，回调或 Effect 捕获了旧渲染的值，产生“过期闭包”——例如定时器里一直读到旧的 count。解决：函数式更新、正确的依赖数组、useEffectEvent / ref。</p></div></details>
+
+<h3>React / 前端</h3>
+
+<details class="check"><summary>React 的渲染流程是怎样的？什么会导致重渲染？</summary><div class="answer"><p>setState → 调度更新 → 重新执行组件函数（render）→ 比对新旧元素树（reconciliation）→ 提交 DOM 变更（commit）。触发原因：自身 state 变化、父组件重渲染、使用的 Context 变化。</p></div></details>
+
+<details class="check"><summary>useEffect 的正确使用场景？常见误用？</summary><div class="answer"><p>与外部系统同步：订阅、WebSocket、浏览器 API。误用：计算派生数据、响应用户事件、手写数据请求、根据 props 重置 state。依赖数组中不稳定引用导致循环。</p></div></details>
+
+<details class="check"><summary>SSR、SSG、CSR、RSC 分别是什么？怎么选？</summary><div class="answer"><p>按“在哪里渲染、何时渲染、发送多少 JS”比较；RSC 是组件是否只存在于服务器，与 SSR 互补。按页面特性选：静态内容 SSG、个性化实时数据 SSR/流式、强交互后台 CSR；讨论水合成本和缓存。</p></div></details>
+
+<details class="check"><summary>如何优化一个首屏很慢的页面？</summary><div class="answer"><p>先测量（LCP、网络瀑布、JS 体积），再对症：服务端渲染 / 流式；代码分割和按需加载；减少客户端组件；并行化数据请求避免瀑布；图片优化；CDN 缓存。强调“先测量，后优化”。</p></div></details>
+
+<h3>全栈 / 后端</h3>
+
+<details class="check"><summary>如何实现端到端类型安全？</summary><div class="answer"><p>数据库 schema（Drizzle）推导行类型 → 服务函数返回类型推导 → 服务器函数 / tRPC / Hono RPC 把类型传给客户端；输入用 Zod schema 同时做校验和类型。局限：只覆盖同一次编译内的代码，外部边界仍需运行时校验。</p></div></details>
+
+<details class="check"><summary>Session 和 JWT 的区别？令牌存在哪里？</summary><div class="answer"><p>Session：服务器存状态，客户端持有 ID，易于撤销；JWT：自包含、无状态校验，但难以提前撤销、体积较大。浏览器端推荐 HttpOnly + Secure + SameSite Cookie，而不是 localStorage；讨论 XSS 与 CSRF 防护。</p></div></details>
+
+<details class="check"><summary>serverless 和容器部署的区别？各适合什么？</summary><div class="answer"><p>生命周期、状态、冷启动、执行时长、计费模型的差异（第 09 章表格）。serverless 适合波动流量的请求处理；容器适合长任务、WebSocket、重计算；讨论数据库连接问题。</p></div></details>
+
+<h3>AI / Agent</h3>
+
+<details class="check"><summary>如何让 LLM 输出稳定的结构化数据？</summary><div class="answer"><p>结构化输出 / 受约束解码 + Zod 校验 + 失败重试或降级；在提示中给示例；简化任务；建立评估集回归测试。</p></div></details>
+
+<details class="check"><summary>RAG 的流程？什么时候不需要 RAG？</summary><div class="answer"><p>切块 → 嵌入 → 存储 → 查询嵌入 → 检索 top-k → 带引用生成；可加混合检索、重排序。数据量小可以直接放入上下文 + 缓存；Agent 式检索（搜索工具）是另一种选择。</p></div></details>
+
+<details class="check"><summary>什么是 Agent？如何设计一个可靠的 Agent？</summary><div class="answer"><p>模型在循环中使用工具直到完成目标。可靠性：步数与预算上限、最小权限工具、敏感操作人工确认、沙箱、上下文管理、可观测性、评估集。先考虑固定工作流能否满足需求。</p></div></details>
+
+<details class="check"><summary>什么是提示注入？如何防御？</summary><div class="answer"><p>数据中夹带指令劫持模型。纵深防御：处理不可信内容时不给危险工具；身份和权限由服务器决定；高风险操作需确认；输出转义；隔离与审计。承认不存在完美防御，重点是限制影响范围。</p></div></details>
+
+<details class="check"><summary>如何降低 LLM 应用的成本？</summary><div class="answer"><p>先测量每个功能的 token 用量；清洗输入；提示缓存；结果缓存与去重；按任务选择模型和推理强度；批处理；限制输出长度和 Agent 步数；用评估确认质量不下降。</p></div></details>
+
+<h2 id="check">自检：一个小设计练习</h2>
+
+<details class="check">
+  <summary>为 LinkNote 设计“每周摘要邮件”：每周一给每个活跃用户发一封邮件，总结他上周收藏的内容。给出估算、架构要点和最大的风险。</summary>
+  <div class="answer">
+    <p><strong>估算</strong>：10 万活跃用户，每人上周约 20 条收藏，每条摘要 200 token → 每封输入约 4000 token，总计约 4 亿输入 token / 周。可以使用批处理接口降低成本，因为不需要实时。</p>
+    <p><strong>架构</strong>：定时任务（Cron）在周一凌晨按用户分批投递到队列 → Worker 读取该用户的已有摘要（复用，不重新抓取网页）→ 调用 LLM 生成周报 → 发送邮件服务 → 记录发送状态（幂等：同一用户同一周只发一次）。</p>
+    <p><strong>风险</strong>：批量任务失败后的重复发送（需要幂等键）；邮件送达率与退订合规；成本突增（设置预算上限）；某个用户的收藏中存在注入内容（周报生成不给任何工具，输出做转义）。</p>
+  </div>
+</details>
+
+</article></main>
+</body>
+</html>
