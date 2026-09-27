@@ -34,14 +34,16 @@
       markDone: '标记本章为已完成', isDone: '✓ 已完成（点击取消）', copy: '复制', copied: '已复制',
       menu: '目录', theme: '切换明暗', lang: 'English', progress: function (d, t) { return '已完成 ' + d + '/' + t; },
       legend: '<span class="badge deep">原理</span> 必须懂原理<br><span class="badge use">会用</span> 能熟练使用<br><span class="badge aware">知道</span> 知道是什么、何时用',
-      foot: '内容基于 2026 年 9 月的生态状态编写。版本号会变化，概念与判断方法不会轻易过时。遇到具体 API 时，以官方文档为准。'
+      foot: '内容基于 2026 年 9 月的生态状态编写。版本号会变化，概念与判断方法不会轻易过时。遇到具体 API 时，以官方文档为准。',
+      license: '本作品采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh-hans" rel="license noopener">CC BY-NC-SA 4.0</a> 许可 · <a href="https://github.com/uxgnod/vibe-hero" rel="noopener">GitHub</a>'
     },
     en: {
       brandSub: 'TS Full-Stack AI Transition Guide', toc: 'On this page', prev: 'Previous', next: 'Next',
       markDone: 'Mark chapter as done', isDone: '✓ Done (click to undo)', copy: 'Copy', copied: 'Copied',
       menu: 'Menu', theme: 'Toggle theme', lang: '中文', progress: function (d, t) { return d + '/' + t + ' done'; },
       legend: '<span class="badge deep">Deep</span> understand the internals<br><span class="badge use">Use</span> use it fluently<br><span class="badge aware">Aware</span> know what & when',
-      foot: 'Written against the state of the ecosystem in September 2026. Version numbers will move; the concepts and the judgment calls age slowly. For concrete APIs, the official docs win.'
+      foot: 'Written against the state of the ecosystem in September 2026. Version numbers will move; the concepts and the judgment calls age slowly. For concrete APIs, the official docs win.',
+      license: 'Licensed under <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="license noopener">CC BY-NC-SA 4.0</a> · <a href="https://github.com/uxgnod/vibe-hero" rel="noopener">GitHub</a>'
     }
   };
 
@@ -202,7 +204,7 @@
 
     var foot = document.createElement('footer');
     foot.className = 'site-foot';
-    foot.textContent = t.foot;
+    foot.innerHTML = esc(t.foot) + '<br>' + t.license;
     doc.appendChild(foot);
   }
 

@@ -19,6 +19,7 @@
   <img alt="zh-CN / English" src="https://img.shields.io/badge/lang-中文%20%7C%20English-2f6fbd">
   <img alt="Ecosystem: Sept 2026" src="https://img.shields.io/badge/ecosystem-2026.09-f59e0b">
   <img alt="No build step" src="https://img.shields.io/badge/build-none-4a4f57">
+  <a href="LICENSE"><img alt="License: CC BY-NC-SA 4.0" src="https://img.shields.io/badge/license-CC%20BY--NC--SA%204.0-lightgrey"></a>
 </p>
 
 ---
@@ -118,6 +119,12 @@ npx wrangler pages deploy . --project-name vibe-hero
 ## 内容时效 / Freshness
 
 内容基于 **2026 年 9 月**的生态状态。版本号会变，概念和判断方法不会轻易过时；具体 API 以官方文档为准。版本快照集中在第 01 章，更新时优先改那里。
+
+## 许可证 / License
+
+本作品采用 [知识共享 署名-非商业性使用-相同方式共享 4.0 国际许可协议（CC BY-NC-SA 4.0）](https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh-hans) 进行许可。你可以自由地分享、翻译和改编，但需要：**署名**（注明出处并附上链接）、**非商业使用**、**以相同许可协议分享**你的改编作品。完整条款见 [LICENSE](LICENSE)。
+
+This work is licensed under [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/). You may share and adapt it for non-commercial purposes, with attribution, under the same license. See [LICENSE](LICENSE).
 
 ## 反馈 / Feedback
 
